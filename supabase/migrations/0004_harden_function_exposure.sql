@@ -48,8 +48,12 @@ grant execute on function public.can_write_shipments() to authenticated, service
 -- ---------------------------------------------------------------------------
 -- public.track_shipment(text) stays deliberately callable by anon. It is the
 -- product's public tracking endpoint and returns only the approved field set
--- (see 0003). This is the one intentional anon-callable SECURITY DEFINER
--- function in the schema.
+-- (see 0003). It was the only intentional anon-callable SECURITY DEFINER
+-- function as of this migration. 0005 and 0007 added four more, each revoked
+-- from PUBLIC and granted to anon in the migration that created it. See the
+-- table in docs/SECURITY.md for the current complete set; any new function in
+-- the public schema must be revoked from PUBLIC in the same migration or it is
+-- published at /rest/v1/rpc/<name> by default.
 -- ---------------------------------------------------------------------------
 
 comment on function public.is_active_admin() is

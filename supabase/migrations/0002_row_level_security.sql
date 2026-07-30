@@ -113,8 +113,12 @@ create policy audit_logs_select on public.audit_logs
 -- support_requests
 -- ---------------------------------------------------------------------------
 
--- Submissions arrive through a server route that validates, throttles and uses
--- the service role, so no client insert policy exists.
+-- No client insert policy exists; submissions arrive through a function.
+--
+-- Superseded by 0005: that route was replaced with submit_support_request(),
+-- a constrained SECURITY DEFINER function granted to anon, so the application
+-- needs no service role key at all. The absence of an insert policy here is
+-- still correct and still deliberate.
 drop policy if exists support_requests_select on public.support_requests;
 create policy support_requests_select on public.support_requests
   for select to authenticated
