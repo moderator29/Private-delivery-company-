@@ -1,0 +1,219 @@
+@import "tailwindcss";
+
+/*
+ * SwiftTrack design tokens.
+ *
+ * The palette is light first: white and near-white surfaces, SwiftTrack red for
+ * primary actions and route emphasis, green reserved exclusively for completed
+ * or delivered states, and a single blue used sparingly for informational
+ * emphasis. Nothing else is introduced, which is what keeps the interface
+ * reading as one system.
+ */
+@theme {
+  /* Brand red. 600 is the action colour, 700 the pressed state. */
+  --color-brand-50: #fef3f4;
+  --color-brand-100: #fde3e5;
+  --color-brand-200: #fbccd0;
+  --color-brand-300: #f7a3ab;
+  --color-brand-400: #f06b78;
+  --color-brand-500: #e33a4c;
+  --color-brand-600: #d91f2e;
+  --color-brand-700: #b71825;
+  --color-brand-800: #991822;
+  --color-brand-900: #7f1921;
+
+  /* Cool neutrals for text, borders and surfaces. */
+  --color-ink-50: #f7f8fa;
+  --color-ink-100: #eef0f4;
+  --color-ink-200: #e2e5eb;
+  --color-ink-300: #cbd1da;
+  --color-ink-400: #9aa3b2;
+  --color-ink-500: #6b7484;
+  --color-ink-600: #4d5666;
+  --color-ink-700: #363e4b;
+  --color-ink-800: #232a34;
+  --color-ink-900: #14181f;
+
+  /* Completed and delivered only. Never decorative. */
+  --color-go-50: #ecfdf3;
+  --color-go-100: #d1fadf;
+  --color-go-500: #12b76a;
+  --color-go-600: #16a34a;
+  --color-go-700: #027a48;
+
+  /* Informational accent, carried over from the logo. */
+  --color-sky-accent-50: #eff6ff;
+  --color-sky-accent-100: #dbeafe;
+  --color-sky-accent-600: #1e6fd9;
+  --color-sky-accent-700: #1a5cb8;
+
+  /* Delay and exception states. */
+  --color-warn-50: #fffaeb;
+  --color-warn-100: #fef0c7;
+  --color-warn-600: #d97706;
+  --color-warn-700: #b45309;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "Menlo", monospace;
+
+  --radius-card: 0.875rem;
+  --radius-control: 0.625rem;
+
+  --shadow-subtle: 0 1px 2px 0 rgb(16 24 40 / 0.04);
+  --shadow-card: 0 1px 2px 0 rgb(16 24 40 / 0.05), 0 8px 24px -16px rgb(16 24 40 / 0.14);
+  --shadow-raised: 0 2px 4px -1px rgb(16 24 40 / 0.06), 0 12px 32px -12px rgb(16 24 40 / 0.16);
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: #ffffff;
+    color: var(--color-ink-800);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* A single consistent focus treatment across every interactive element. */
+  :focus-visible {
+    outline: 2px solid var(--color-brand-600);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::selection {
+    background-color: var(--color-brand-100);
+    color: var(--color-brand-900);
+  }
+
+  /* Tabular figures keep timestamps and tracking IDs from shifting width. */
+  time,
+  [data-numeric] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  svg {
+    flex-shrink: 0;
+  }
+}
+
+@layer utilities {
+  /* Screen-reader-only text that becomes visible when focused, used by the
+     skip link in the site header. */
+  .sr-only-focusable:not(:focus):not(:focus-within) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* Motion is opt-in. Anything decorative stops when the visitor asks it to. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Motion
+ *
+ * A small, shared vocabulary rather than one-off animations: content rises in
+ * as it appears, and a few accents draw themselves. Everything here is inside
+ * motion-safe utilities or the reduced-motion block above, so a visitor who
+ * asks for less movement gets a completely static page.
+ * ------------------------------------------------------------------------- */
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes rise-word {
+  from {
+    opacity: 0;
+    transform: translateY(0.5em) rotate(1.5deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes draw-underline {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -32;
+  }
+}
+
+@layer utilities {
+  /* Applied by the Reveal component once a section scrolls into view. */
+  .reveal {
+    opacity: 0;
+  }
+
+  .reveal-visible {
+    animation: fade-up 0.6s var(--ease-out-soft) both;
+  }
+
+  .animated-underline::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    bottom: -0.15em;
+    height: 3px;
+    border-radius: 999px;
+    background-color: var(--color-brand-600);
+    transform-origin: left;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .animated-underline::after {
+    animation: draw-underline 0.7s var(--ease-out-soft) 0.25s both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+  }
+}
