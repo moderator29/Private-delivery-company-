@@ -5,11 +5,13 @@ import parcel from "../../../public/brand/parcel.png";
 /**
  * The parcel shown at the top of the shipment details panel.
  *
- * This is the carton from the approved design, extracted from the source
- * artwork with the card background flood-filled away from the edges inward, so
- * the white shipping label on the box survives while everything around it goes
- * transparent. That lets it sit on the card's gradient without a visible plate
- * behind it.
+ * The carton comes from the approved design, cut out so it sits on the card's
+ * gradient without a plate behind it. The logo printed on it does not: the
+ * source artwork is a low resolution crop, and its logo was smeared to the
+ * point that "Swift" was unreadable and the descriptor line was mush. So the
+ * panel was repainted and the real logo composited onto it in the face's
+ * perspective, with the descriptor set as live text. See
+ * scripts/rebuild-parcel.py, which regenerates the asset from the original.
  */
 export function ParcelIllustration({ label }: { label?: string | null }) {
   return (
