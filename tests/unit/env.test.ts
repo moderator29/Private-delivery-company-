@@ -48,6 +48,17 @@ describe("normalizeSupabaseUrl", () => {
     expect(normalizeSupabaseUrl(`'${canonical}'`)).toBe(canonical);
   });
 
+  it("strips the wrappers a value picks up in transit", () => {
+    // Angle brackets are what Markdown and chat clients add when they
+    // auto-link a bare URL, and they survive a copy and paste into a
+    // configuration field where they are invisible and fatal.
+    expect(normalizeSupabaseUrl(`<${canonical}>`)).toBe(canonical);
+    expect(normalizeSupabaseUrl(`\`${canonical}\``)).toBe(canonical);
+    expect(normalizeSupabaseUrl(`${canonical},`)).toBe(canonical);
+    expect(normalizeSupabaseUrl(`${canonical};`)).toBe(canonical);
+    expect(normalizeSupabaseUrl(`<${canonical}/>`)).toBe(canonical);
+  });
+
   it("treats an empty or absent value as absent", () => {
     expect(normalizeSupabaseUrl(undefined)).toBeUndefined();
     expect(normalizeSupabaseUrl("   ")).toBeUndefined();

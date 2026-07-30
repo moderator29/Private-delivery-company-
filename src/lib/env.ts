@@ -109,9 +109,15 @@ export function normalizeSupabaseUrl(
 ): string | undefined {
   if (!raw) return undefined;
 
+  // Wrappers a value picks up in transit. Angle brackets come from chat and
+  // Markdown auto-linking, backticks from code formatting, quotes from shell
+  // snippets and .env files, and a trailing comma or semicolon from a copied
+  // line of config. None of them are ever part of the URL, and every one of
+  // them makes it invalid in a way that reads as "the tracking service is
+  // down".
   const value = raw
     .trim()
-    .replace(/^['"]+|['"]+$/g, "")
+    .replace(/^[<`'"\s]+|[>`'"\s,;]+$/g, "")
     .replace(/\/+$/, "")
     .trim();
 
