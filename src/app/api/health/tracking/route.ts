@@ -40,6 +40,12 @@ export async function GET() {
     problems: env.problems,
   };
 
+  if (env.urlNormalized) {
+    body.note =
+      "The configured project URL was not in the form the client expects and was reshaped to " +
+      "match. Tidying the variable is worthwhile but nothing is broken.";
+  }
+
   if (!env.configured) {
     body.tracking = "unavailable";
     body.hint =
@@ -57,10 +63,7 @@ export async function GET() {
     if (error) {
       body.tracking = "failed";
       body.error = { code: error.code ?? null, message: error.message };
-      body.hint =
-        error.code === "PGRST202"
-          ? "The database has no track_shipment function. Apply supabase/migrations in order."
-          : "The project answered but refused the call. Check that migration 0004 granted execute on track_shipment to anon.";
+      body.hint = explain(error.code ?? null, error.message);
       return json(body, 503);
     }
 
@@ -75,6 +78,39 @@ export async function GET() {
       "The project URL resolved but could not be reached. Check it names a live project.";
     return json(body, 503);
   }
+}
+
+/**
+ * Turns the failure into the next thing to check.
+ *
+ * The distinction that matters most is transport versus database. supabase-js
+ * reports a connection that never landed through the same error channel as a
+ * query the database refused, but with no code — so a wrong host and a missing
+ * grant arrive looking alike, and sending someone to audit their SQL grants
+ * when the real problem is a typo in a hostname wastes the time this endpoint
+ * exists to save.
+ */
+function explain(code: string | null, message: string): string {
+  if (!code) {
+    return (
+      "The request never reached the database. This is a transport problem, not a permissions " +
+      "one: check that the project URL names a live project and that this deployment is allowed " +
+      "to make outbound requests to it."
+    );
+  }
+
+  if (code === "PGRST202") {
+    return "The project answered but has no track_shipment function. Apply supabase/migrations in order.";
+  }
+
+  if (code === "PGRST301" || code === "42501") {
+    return (
+      "The project answered and refused the call. Check that migration 0004 granted execute on " +
+      "track_shipment to anon, and that the key is the publishable or anon key for this project."
+    );
+  }
+
+  return `The project answered with ${code}: ${message}`;
 }
 
 function json(body: unknown, status: number) {

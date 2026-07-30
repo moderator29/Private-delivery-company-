@@ -91,6 +91,68 @@ function fromBundle(): { url?: string; key?: string } {
   };
 }
 
+/**
+ * Coerces the ways a Supabase project URL actually gets pasted into a
+ * configuration field into the one form the client library accepts.
+ *
+ * The dashboard shows the project reference on its own, the URL in the address
+ * bar is the dashboard's own, and copying the API URL out of a terminal or a
+ * chat message tends to lose the scheme or gain a pair of quotes. Every one of
+ * those identifies the project unambiguously, and rejecting them buys nothing
+ * except an outage that reads as "the tracking service is down".
+ *
+ * Anything unrecognised is returned untouched so validation can report it,
+ * rather than being mangled into a URL that is valid and wrong.
+ */
+export function normalizeSupabaseUrl(
+  raw: string | undefined,
+): string | undefined {
+  if (!raw) return undefined;
+
+  const value = raw
+    .trim()
+    .replace(/^['"]+|['"]+$/g, "")
+    .replace(/\/+$/, "")
+    .trim();
+
+  if (!value) return undefined;
+
+  // Never reshape something that looks like a credential. A JWT is dotted
+  // alphanumerics and would otherwise satisfy the "host that lost its scheme"
+  // rule below, which would put the key in a DNS query and a TLS SNI header on
+  // every request. A key in this field is a mistake; it has to stay one.
+  if (/^(?:sb_|eyJ)/.test(value)) return value;
+
+  // A dashboard link rather than the API URL. The reference is the last
+  // meaningful path segment.
+  const dashboard = value.match(
+    /^https?:\/\/(?:www\.)?supabase\.(?:com|io)\/dashboard\/project\/([a-z0-9]+)/i,
+  );
+  if (dashboard) return `https://${dashboard[1]}.supabase.co`;
+
+  if (/^https?:\/\//i.test(value)) {
+    // A full API URL with a path attached, such as the REST or auth base.
+    // supabase-js wants the origin.
+    try {
+      const parsed = new URL(value);
+      if (/\.supabase\.(co|in|red)$/i.test(parsed.hostname))
+        return parsed.origin;
+    } catch {
+      // Fall through and let validation report it.
+    }
+    return value;
+  }
+
+  // The project reference on its own, as the dashboard displays it.
+  if (/^[a-z0-9]{16,32}$/i.test(value)) return `https://${value}.supabase.co`;
+
+  // A host that simply lost its scheme.
+  if (/^[a-z0-9][a-z0-9.-]*\.[a-z]{2,}(?::\d+)?$/i.test(value))
+    return `https://${value}`;
+
+  return value;
+}
+
 let cached: PublicEnv | null = null;
 
 /** Where a resolved value came from. Reported by the health endpoint. */
@@ -100,6 +162,11 @@ export interface SupabaseEnvReport {
   keySource: string | null;
   /** Host only. Already public: it is in the browser bundle. Never the key. */
   host: string | null;
+  /**
+   * Set when the configured value had to be reshaped to be usable, so the
+   * health endpoint can say so and the variable can be tidied at leisure.
+   */
+  urlNormalized: boolean;
   problems: string[];
 }
 
@@ -109,7 +176,10 @@ function resolve(): { env: PublicEnv | null; report: SupabaseEnvReport } {
   const runtimeUrlName = URL_NAMES.find((name) => fromRuntime([name]));
   const runtimeKeyName = KEY_NAMES.find((name) => fromRuntime([name]));
 
-  const url = fromRuntime(URL_NAMES) ?? bundled.url;
+  const configuredUrl = fromRuntime(URL_NAMES) ?? bundled.url;
+  const url = normalizeSupabaseUrl(configuredUrl);
+  const urlNormalized = Boolean(configuredUrl) && url !== configuredUrl;
+
   const key = fromRuntime(KEY_NAMES) ?? bundled.key;
 
   const urlSource =
@@ -126,12 +196,31 @@ function resolve(): { env: PublicEnv | null; report: SupabaseEnvReport } {
   if (!parsed.success) {
     const problems = parsed.error.issues.map((issue) => {
       const name = String(issue.path[0]);
-      const present = name.includes("URL") ? Boolean(url) : Boolean(key);
-      return present ? `${name} ${issue.message}` : `${name} is not set`;
+      const isUrl = name.includes("URL");
+      const present = isUrl ? Boolean(configuredUrl) : Boolean(key);
+      if (!present) return `${name} is not set`;
+      if (isUrl) {
+        // The value exists but is not usable. Say what a usable one looks
+        // like, without echoing what was configured: if a key were pasted into
+        // this field by mistake, repeating it here would publish it.
+        return (
+          `${name} is set but ${issue.message}. It should be the project API URL, ` +
+          `for example https://abcdefghijklmnopqrst.supabase.co - not the dashboard link, ` +
+          `and not a key.`
+        );
+      }
+      return `${name} ${issue.message}`;
     });
     return {
       env: null,
-      report: { configured: false, urlSource, keySource, host: null, problems },
+      report: {
+        configured: false,
+        urlSource,
+        keySource,
+        host: null,
+        urlNormalized,
+        problems,
+      },
     };
   }
 
@@ -144,7 +233,14 @@ function resolve(): { env: PublicEnv | null; report: SupabaseEnvReport } {
 
   return {
     env: parsed.data,
-    report: { configured: true, urlSource, keySource, host, problems: [] },
+    report: {
+      configured: true,
+      urlSource,
+      keySource,
+      host,
+      urlNormalized,
+      problems: [],
+    },
   };
 }
 
