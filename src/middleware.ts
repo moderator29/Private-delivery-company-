@@ -2,42 +2,51 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 /**
- * Runs on every request. Two jobs.
+ * Keeps the operator session fresh and keeps unauthenticated visitors out of
+ * /admin.
  *
- * 1. Refresh the Supabase session so an operator is not signed out mid task.
- *    Server components cannot write cookies, so the refreshed tokens have to be
- *    attached here.
+ * Two deliberate constraints, both learned from taking the production site down:
  *
- * 2. Keep unauthenticated visitors out of /admin.
+ * 1. It runs on /admin only. Public pages have no session, so refreshing one
+ *    there bought nothing and cost an auth round trip on every request. Worse,
+ *    it put a network call to a third party service in the path of every page
+ *    on the site.
  *
- * This redirect is a convenience, not the security boundary. Every admin page
+ * 2. Every Supabase interaction is wrapped. If the auth service is slow,
+ *    unreachable, or configured with a bad URL or key, this must degrade to
+ *    "nobody is signed in" rather than throwing. An uncaught throw here becomes
+ *    MIDDLEWARE_INVOCATION_FAILED, which is a 500 on the whole route, not a
+ *    graceful failure.
+ *
+ * This redirect is a convenience, never the security boundary. Every admin page
  * calls requireAdmin() in the request that actually reads data, and Row Level
- * Security sits underneath that, so bypassing this middleware yields nothing.
+ * Security sits underneath that, so a bypassed redirect still yields nothing.
  */
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  const { pathname } = request.nextUrl;
+  const isLoginPage = pathname === "/admin/login";
+
+  const toLogin = () => {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/admin/login";
+    // Preserve the destination so sign-in can return them there.
+    if (!isLoginPage) redirectUrl.searchParams.set("next", pathname);
+    return NextResponse.redirect(redirectUrl);
+  };
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-  // Without Supabase configured there is no session to refresh and nobody can
-  // be signed in. Public pages still render; /admin sends visitors to the login
-  // page, which explains what is missing. Failing hard here would take the
-  // whole site down over a misconfigured operations area.
+  // Without Supabase configured nobody can be signed in. The login page still
+  // renders and explains itself; everything else in /admin bounces there.
   if (!supabaseUrl || !supabaseKey) {
-    const { pathname } = request.nextUrl;
-    if (pathname.startsWith("/admin") && pathname !== "/admin/login") {
-      const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = "/admin/login";
-      return NextResponse.redirect(redirectUrl);
-    }
-    return response;
+    return isLoginPage ? NextResponse.next({ request }) : toLogin();
   }
 
-  const supabase = createServerClient(
-    supabaseUrl,
-    supabaseKey,
-    {
+  let response = NextResponse.next({ request });
+
+  try {
+    const supabase = createServerClient(supabaseUrl, supabaseKey, {
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -52,44 +61,37 @@ export async function middleware(request: NextRequest) {
           }
         },
       },
-    },
-  );
+    });
 
-  // getUser validates the token with the auth server rather than trusting the
-  // cookie contents, which is what makes this check meaningful.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    // getUser validates the token with the auth server rather than trusting the
+    // cookie contents, which is what makes this check meaningful.
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
-  const isAdminArea = pathname.startsWith("/admin");
-  const isLoginPage = pathname === "/admin/login";
+    if (!user && !isLoginPage) return toLogin();
 
-  if (isAdminArea && !isLoginPage && !user) {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/admin/login";
-    // Preserve where they were going so sign-in can return them there.
-    redirectUrl.searchParams.set("next", pathname);
-    return NextResponse.redirect(redirectUrl);
+    if (user && isLoginPage) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/admin";
+      redirectUrl.search = "";
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    return response;
+  } catch (cause) {
+    // Auth is unavailable or misconfigured. Treat it as signed out rather than
+    // returning a 500: the page behind this still enforces access itself.
+    console.error("Middleware auth check failed", cause);
+    return isLoginPage ? NextResponse.next({ request }) : toLogin();
   }
-
-  if (isLoginPage && user) {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/admin";
-    redirectUrl.search = "";
-    return NextResponse.redirect(redirectUrl);
-  }
-
-  return response;
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Everything except Next.js internals and static assets. Images and fonts
-     * do not need a session check, and running one would add a round trip to
-     * every asset request.
-     */
-    "/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png|robots.txt|sitemap.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp|woff2?)$).*)",
-  ],
+  /*
+   * Scoped to the operations area on purpose. The public site, its static
+   * assets and the tracking pages never invoke this, so nothing about auth can
+   * affect whether they render.
+   */
+  matcher: ["/admin/:path*"],
 };
