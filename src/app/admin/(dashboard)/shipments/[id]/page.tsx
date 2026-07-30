@@ -26,7 +26,13 @@ import {
   requireAdmin,
 } from "@/lib/data/admin";
 import { absoluteUrl } from "@/lib/env";
-import { formatCalendarDate, formatDateTime, formatWeight, joinParts } from "@/lib/format";
+import {
+  formatCalendarDate,
+  formatDateTime,
+  formatWeight,
+  joinParts,
+} from "@/lib/format";
+import { SERVICE_LEVEL_LABELS } from "@/lib/tracking/shipment";
 import { STATUS_META } from "@/lib/tracking/status";
 import { formatTrackingId } from "@/lib/tracking/tracking-id";
 
@@ -39,7 +45,10 @@ interface PageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export default async function ShipmentDetailPage({ params, searchParams }: PageProps) {
+export default async function ShipmentDetailPage({
+  params,
+  searchParams,
+}: PageProps) {
   const profile = await requireAdmin();
   const { id } = await params;
   const flags = await searchParams;
@@ -118,7 +127,10 @@ export default async function ShipmentDetailPage({ params, searchParams }: PageP
             ) : null}
 
             {writable ? (
-              <ButtonLink href={`/admin/shipments/${shipment.id}/edit`} size="md">
+              <ButtonLink
+                href={`/admin/shipments/${shipment.id}/edit`}
+                size="md"
+              >
                 <PencilIcon className="size-4" />
                 Edit
               </ButtonLink>
@@ -131,15 +143,15 @@ export default async function ShipmentDetailPage({ params, searchParams }: PageP
 
       {!writable ? (
         <Alert tone="info" title="Read-only access">
-          You can view this shipment and its history. Adding events, editing and archiving are
-          unavailable on your account.
+          You can view this shipment and its history. Adding events, editing and
+          archiving are unavailable on your account.
         </Alert>
       ) : null}
 
       {shipment.archived_at ? (
         <Alert tone="warning" title="This shipment is archived">
-          Public tracking returns nothing for this tracking number. The record and its history are
-          retained for audit.
+          Public tracking returns nothing for this tracking number. The record
+          and its history are retained for audit.
         </Alert>
       ) : null}
 
@@ -165,7 +177,8 @@ export default async function ShipmentDetailPage({ params, searchParams }: PageP
 
             {events.length === 0 ? (
               <p className="px-5 py-10 text-center text-sm text-ink-500">
-                Nothing yet. Adding the first event makes this shipment visible on public tracking.
+                Nothing yet. Adding the first event makes this shipment visible
+                on public tracking.
               </p>
             ) : (
               <ol className="divide-y divide-ink-100">
@@ -174,7 +187,9 @@ export default async function ShipmentDetailPage({ params, searchParams }: PageP
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-sm font-semibold text-ink-900">{event.title}</p>
+                          <p className="text-sm font-semibold text-ink-900">
+                            {event.title}
+                          </p>
                           <StatusBadge status={event.status} size="sm" />
                           {!event.is_public ? (
                             <span className="inline-flex items-center gap-1 rounded-full bg-ink-100 px-2 py-0.5 text-xs font-semibold text-ink-600">
@@ -224,7 +239,10 @@ export default async function ShipmentDetailPage({ params, searchParams }: PageP
                 </span>
               </DetailRow>
               <DetailRow label="Destination">
-                {joinParts([shipment.destination_city, shipment.destination_state])}
+                {joinParts([
+                  shipment.destination_city,
+                  shipment.destination_state,
+                ])}
                 <span className="block text-xs font-normal text-ink-500">
                   {countryName(shipment.destination_country)}
                 </span>
@@ -243,20 +261,32 @@ export default async function ShipmentDetailPage({ params, searchParams }: PageP
           </Card>
 
           <Card>
-            <CardHeader title="Parties" description="Contact details are never published." />
+            <CardHeader
+              title="Parties"
+              description="Contact details are never published."
+            />
             <dl className="px-5 py-4">
               <DetailRow label="Sender">
-                {shipment.sender_name ?? shipment.sender_company ?? "Not recorded"}
+                {shipment.sender_name ??
+                  shipment.sender_company ??
+                  "Not recorded"}
               </DetailRow>
               <DetailRow label="Sender contact">
-                {joinParts([shipment.sender_email, shipment.sender_phone], " - ") || "Not recorded"}
+                {joinParts(
+                  [shipment.sender_email, shipment.sender_phone],
+                  " - ",
+                ) || "Not recorded"}
               </DetailRow>
               <DetailRow label="Recipient">
-                {shipment.recipient_name ?? shipment.recipient_company ?? "Not recorded"}
+                {shipment.recipient_name ??
+                  shipment.recipient_company ??
+                  "Not recorded"}
               </DetailRow>
               <DetailRow label="Recipient contact">
-                {joinParts([shipment.recipient_email, shipment.recipient_phone], " - ") ||
-                  "Not recorded"}
+                {joinParts(
+                  [shipment.recipient_email, shipment.recipient_phone],
+                  " - ",
+                ) || "Not recorded"}
               </DetailRow>
             </dl>
           </Card>
@@ -264,14 +294,19 @@ export default async function ShipmentDetailPage({ params, searchParams }: PageP
           <Card>
             <CardHeader title="Package and dates" />
             <dl className="px-5 py-4">
-              <DetailRow label="Service">{STATUS_META[shipment.status].label}</DetailRow>
-              <DetailRow label="Package type">{shipment.package_type ?? "Not set"}</DetailRow>
+              <DetailRow label="Service">
+                {SERVICE_LEVEL_LABELS[shipment.service_level]}
+              </DetailRow>
+              <DetailRow label="Package type">
+                {shipment.package_type ?? "Not set"}
+              </DetailRow>
               <DetailRow label="Pieces">{shipment.piece_count}</DetailRow>
               <DetailRow label="Weight">
                 {formatWeight(shipment.weight_kg) ?? "Not recorded"}
               </DetailRow>
               <DetailRow label="Estimated delivery">
-                {formatCalendarDate(shipment.estimated_delivery_date) ?? "Not set"}
+                {formatCalendarDate(shipment.estimated_delivery_date) ??
+                  "Not set"}
                 {shipment.estimated_delivery_window ? (
                   <span className="block text-xs font-normal text-ink-500">
                     {shipment.estimated_delivery_window}
@@ -279,17 +314,24 @@ export default async function ShipmentDetailPage({ params, searchParams }: PageP
                 ) : null}
               </DetailRow>
               <DetailRow label="Created">
-                <time dateTime={shipment.created_at}>{formatDateTime(shipment.created_at)}</time>
+                <time dateTime={shipment.created_at}>
+                  {formatDateTime(shipment.created_at)}
+                </time>
               </DetailRow>
               <DetailRow label="Last updated">
-                <time dateTime={shipment.updated_at}>{formatDateTime(shipment.updated_at)}</time>
+                <time dateTime={shipment.updated_at}>
+                  {formatDateTime(shipment.updated_at)}
+                </time>
               </DetailRow>
             </dl>
           </Card>
 
           {shipment.internal_notes ? (
             <Card>
-              <CardHeader title="Internal notes" description="Operations only." />
+              <CardHeader
+                title="Internal notes"
+                description="Operations only."
+              />
               <p className="px-5 py-4 text-sm leading-relaxed whitespace-pre-wrap text-ink-700">
                 {shipment.internal_notes}
               </p>
@@ -314,7 +356,11 @@ export default async function ShipmentDetailPage({ params, searchParams }: PageP
                   name="archive"
                   value={shipment.archived_at ? "false" : "true"}
                 />
-                <Button type="submit" variant={shipment.archived_at ? "secondary" : "danger"} size="md">
+                <Button
+                  type="submit"
+                  variant={shipment.archived_at ? "secondary" : "danger"}
+                  size="md"
+                >
                   {shipment.archived_at ? (
                     <>
                       <RestoreIcon className="size-4" />
@@ -346,11 +392,19 @@ export default async function ShipmentDetailPage({ params, searchParams }: PageP
   );
 }
 
-function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
+function DetailRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex items-start justify-between gap-4 border-b border-ink-100 py-2.5 last:border-b-0">
       <dt className="text-sm text-ink-500">{label}</dt>
-      <dd className="text-right text-sm font-semibold text-ink-800">{children}</dd>
+      <dd className="text-right text-sm font-semibold text-ink-800">
+        {children}
+      </dd>
     </div>
   );
 }
