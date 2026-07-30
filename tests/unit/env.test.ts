@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { normalizeSupabaseUrl } from "@/lib/env";
+import { describeSupabaseEnv, normalizeSupabaseUrl } from "@/lib/env";
 
 /**
  * These cases are not hypothetical. A deployment went out with a project URL
@@ -82,5 +82,92 @@ describe("normalizeSupabaseUrl", () => {
     // is ambiguous, and local development is served over http, so assuming
     // https here would break the case it appears to help.
     expect(normalizeSupabaseUrl("127.0.0.1:54321")).toBe("127.0.0.1:54321");
+  });
+});
+
+/**
+ * describeSupabaseEnv() reads the live environment, so these set and restore it
+ * around each case rather than mutating it for the whole file.
+ */
+describe("describeSupabaseEnv", () => {
+  const NAMES = [
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_PROJECT_URL",
+    "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    "SUPABASE_PUBLISHABLE_KEY",
+    "SUPABASE_ANON_KEY",
+  ];
+
+  const url = "https://fdozazcubtreeaukjtot.supabase.co";
+  const key = "sb_publishable_0123456789abcdefghij";
+  let saved: Record<string, string | undefined> = {};
+
+  beforeEach(() => {
+    saved = Object.fromEntries(NAMES.map((name) => [name, process.env[name]]));
+    for (const name of NAMES) delete process.env[name];
+  });
+
+  afterEach(() => {
+    for (const name of NAMES) {
+      if (saved[name] === undefined) delete process.env[name];
+      else process.env[name] = saved[name];
+    }
+  });
+
+  it("reports a healthy configuration", () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = url;
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = key;
+
+    const report = describeSupabaseEnv();
+    expect(report.configured).toBe(true);
+    expect(report.urlShape).toBe("ok");
+    expect(report.swapped).toBe(false);
+    expect(report.host).toBe("fdozazcubtreeaukjtot.supabase.co");
+  });
+
+  it("recovers when the two variables hold each other's values", () => {
+    // A project URL is longer than the key's minimum length, so a swap passes
+    // the key check in silence and only the URL looks wrong. Both are wrong.
+    process.env.NEXT_PUBLIC_SUPABASE_URL = key;
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = url;
+
+    const report = describeSupabaseEnv();
+    expect(report.swapped).toBe(true);
+    expect(report.configured).toBe(true);
+    expect(report.host).toBe("fdozazcubtreeaukjtot.supabase.co");
+  });
+
+  it("names a key in the URL field without repeating it", () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = key;
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = key;
+
+    const report = describeSupabaseEnv();
+    expect(report.configured).toBe(false);
+    expect(report.urlShape).toBe("looks-like-a-key");
+    expect(report.problems.join(" ")).toContain("holds a Supabase key");
+    // The whole point: the value must never appear in the output.
+    expect(report.problems.join(" ")).not.toContain(key);
+  });
+
+  it("calls out a value broken by a space or line break", () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://fdozazcubtreeaukjtot .supabase.co";
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = key;
+
+    const report = describeSupabaseEnv();
+    expect(report.configured).toBe(false);
+    expect(report.urlShape).toBe("contains-whitespace");
+    expect(report.problems.join(" ")).toContain("space or a line break");
+  });
+
+  it("reports which variable name each value came from", () => {
+    process.env.SUPABASE_URL = url;
+    process.env.SUPABASE_ANON_KEY = key;
+
+    const report = describeSupabaseEnv();
+    expect(report.configured).toBe(true);
+    expect(report.urlSource).toBe("SUPABASE_URL");
+    expect(report.keySource).toBe("SUPABASE_ANON_KEY");
   });
 });

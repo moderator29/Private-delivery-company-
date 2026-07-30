@@ -153,6 +153,45 @@ export function normalizeSupabaseUrl(
   return value;
 }
 
+/** True for values that are unmistakably a Supabase key rather than a URL. */
+function looksLikeKey(value: string | undefined): boolean {
+  return Boolean(value && /^(?:sb_(?:publishable|secret)_|eyJ)/.test(value));
+}
+
+/** True when the value resolves to something the client library can use. */
+function looksLikeUrl(value: string | undefined): boolean {
+  const normalized = normalizeSupabaseUrl(value);
+  if (!normalized) return false;
+  try {
+    const parsed = new URL(normalized);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Describes what is in the URL variable without ever repeating it.
+ *
+ * This is the difference between a diagnosis and a guess when the value cannot
+ * be looked at directly. Echoing it is not an option: if a key has been pasted
+ * into this field, printing it would publish the key on a URL anyone can open.
+ */
+export type UrlShape =
+  | "ok"
+  | "empty"
+  | "looks-like-a-key"
+  | "contains-whitespace"
+  | "unrecognised";
+
+function describeUrlShape(raw: string | undefined): UrlShape {
+  if (!raw || !raw.trim()) return "empty";
+  if (looksLikeKey(raw.trim())) return "looks-like-a-key";
+  if (looksLikeUrl(raw)) return "ok";
+  if (/\s/.test(raw.trim())) return "contains-whitespace";
+  return "unrecognised";
+}
+
 let cached: PublicEnv | null = null;
 
 /** Where a resolved value came from. Reported by the health endpoint. */
@@ -167,6 +206,10 @@ export interface SupabaseEnvReport {
    * health endpoint can say so and the variable can be tidied at leisure.
    */
   urlNormalized: boolean;
+  /** What the URL variable holds, described without repeating its value. */
+  urlShape: UrlShape;
+  /** Set when the two variables held each other's values and were swapped. */
+  swapped: boolean;
   problems: string[];
 }
 
@@ -176,11 +219,25 @@ function resolve(): { env: PublicEnv | null; report: SupabaseEnvReport } {
   const runtimeUrlName = URL_NAMES.find((name) => fromRuntime([name]));
   const runtimeKeyName = KEY_NAMES.find((name) => fromRuntime([name]));
 
-  const configuredUrl = fromRuntime(URL_NAMES) ?? bundled.url;
+  let configuredUrl = fromRuntime(URL_NAMES) ?? bundled.url;
+  let key = fromRuntime(KEY_NAMES) ?? bundled.key;
+
+  // The two variables holding each other's values is a common and completely
+  // unambiguous mistake: a key is never a URL and a URL is never a key. It is
+  // also invisible from the outside, because a project URL is comfortably
+  // longer than the key's minimum length and so passes that check in silence.
+  // Correcting it here beats failing with a message that points at the URL
+  // when both variables are wrong.
+  const swapped = looksLikeKey(configuredUrl) && looksLikeUrl(key);
+  if (swapped) {
+    const held = configuredUrl;
+    configuredUrl = key;
+    key = held;
+  }
+
+  const urlShape = describeUrlShape(configuredUrl);
   const url = normalizeSupabaseUrl(configuredUrl);
   const urlNormalized = Boolean(configuredUrl) && url !== configuredUrl;
-
-  const key = fromRuntime(KEY_NAMES) ?? bundled.key;
 
   const urlSource =
     runtimeUrlName ?? (bundled.url ? "bundled NEXT_PUBLIC_SUPABASE_URL" : null);
@@ -200,9 +257,22 @@ function resolve(): { env: PublicEnv | null; report: SupabaseEnvReport } {
       const present = isUrl ? Boolean(configuredUrl) : Boolean(key);
       if (!present) return `${name} is not set`;
       if (isUrl) {
-        // The value exists but is not usable. Say what a usable one looks
-        // like, without echoing what was configured: if a key were pasted into
-        // this field by mistake, repeating it here would publish it.
+        // The value exists but is not usable. Say what is wrong with it in
+        // terms of its shape, never by repeating it: if a key has been pasted
+        // into this field, echoing it here would publish the key.
+        if (urlShape === "looks-like-a-key") {
+          return (
+            `${name} holds a Supabase key, not a URL. Put the project API URL here ` +
+            `(https://<project-ref>.supabase.co) and the key in ` +
+            `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.`
+          );
+        }
+        if (urlShape === "contains-whitespace") {
+          return (
+            `${name} is set but contains a space or a line break, so it is not a valid URL. ` +
+            `Re-paste it as a single unbroken value.`
+          );
+        }
         return (
           `${name} is set but ${issue.message}. It should be the project API URL, ` +
           `for example https://abcdefghijklmnopqrst.supabase.co - not the dashboard link, ` +
@@ -219,6 +289,8 @@ function resolve(): { env: PublicEnv | null; report: SupabaseEnvReport } {
         keySource,
         host: null,
         urlNormalized,
+        urlShape,
+        swapped,
         problems,
       },
     };
@@ -239,6 +311,8 @@ function resolve(): { env: PublicEnv | null; report: SupabaseEnvReport } {
       keySource,
       host,
       urlNormalized,
+      urlShape,
+      swapped,
       problems: [],
     },
   };

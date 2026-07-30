@@ -37,10 +37,17 @@ export async function GET() {
     urlSource: env.urlSource,
     keySource: env.keySource,
     supabaseHost: env.host,
+    // What the URL variable holds, never the value itself.
+    urlShape: env.urlShape,
     problems: env.problems,
   };
 
-  if (env.urlNormalized) {
+  if (env.swapped) {
+    body.note =
+      "NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY held each other's " +
+      "values and were swapped to keep the site working. Correct them on the hosting platform: " +
+      "the URL variable should hold https://<project-ref>.supabase.co.";
+  } else if (env.urlNormalized) {
     body.note =
       "The configured project URL was not in the form the client expects and was reshaped to " +
       "match. Tidying the variable is worthwhile but nothing is broken.";
