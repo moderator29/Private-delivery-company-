@@ -69,21 +69,21 @@ from new_shipment,
     'Picked Up',
     'Collected from the sender by a SwiftTrack courier.',
     'Dubai', null, 'AE', 25.204800, 55.270800,
-    timestamptz '2026-07-31 11:15:00+04'
+    timestamptz '2026-07-30 11:15:00+04'
   ),
   (
     'in_transit',
     'Departed Origin Facility',
     'Processed for export and released from the Dubai gateway.',
     'Dubai', null, 'AE', 25.204800, 55.270800,
-    timestamptz '2026-08-01 09:40:00+04'
+    timestamptz '2026-07-30 16:40:00+04'
   ),
   (
     'in_transit',
     'In Transit',
     'Departed Dubai on the linehaul to the destination country.',
     'Dubai', null, 'AE', 25.204800, 55.270800,
-    timestamptz '2026-08-01 10:45:00+04'
+    timestamptz '2026-07-30 18:35:00+04'
   )
 ) as event(status, title, description, city, state, country, latitude, longitude, occurred_at);
 

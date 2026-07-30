@@ -45,8 +45,7 @@ export default async function TrackPage({
           Track a shipment
         </h1>
         <p className="mt-3 text-base leading-relaxed text-ink-600">
-          Enter the tracking number from your shipping confirmation. It starts with ST and is
-          twelve characters long.
+          Enter the tracking number from your shipping confirmation.
         </p>
 
         {hasInvalidSubmission ? (

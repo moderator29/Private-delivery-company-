@@ -16,7 +16,9 @@ import {
 } from "@/lib/tracking/status";
 
 /** Convenience builder so a case only states the fields it cares about. */
-function event(overrides: Partial<ProgressEventInput> & { status: ShipmentStatus }): ProgressEventInput {
+function event(
+  overrides: Partial<ProgressEventInput> & { status: ShipmentStatus },
+): ProgressEventInput {
   return {
     title: STATUS_META[overrides.status].label,
     description: null,
@@ -55,7 +57,9 @@ describe("journeyProgress", () => {
   it("places a failed delivery attempt where out for delivery sits", () => {
     // The package reached the destination city, just not the door, so it must
     // not slide backwards on the route visual.
-    expect(journeyProgress("delivery_attempted")).toBe(journeyProgress("out_for_delivery"));
+    expect(journeyProgress("delivery_attempted")).toBe(
+      journeyProgress("out_for_delivery"),
+    );
   });
 
   it("parks off-path statuses at the midpoint rather than implying progress", () => {
@@ -135,13 +139,21 @@ describe("buildProgressSteps", () => {
       description: "Shipment details received and the waybill was created.",
       occurredAt: "2026-07-30T04:30:00Z",
     }),
-    event({ status: "picked_up", title: "Picked Up", occurredAt: "2026-07-31T07:15:00Z" }),
+    event({
+      status: "picked_up",
+      title: "Picked Up",
+      occurredAt: "2026-07-31T07:15:00Z",
+    }),
     event({
       status: "in_transit",
       title: "Departed Origin Facility",
       occurredAt: "2026-08-01T05:40:00Z",
     }),
-    event({ status: "in_transit", title: "In Transit", occurredAt: "2026-08-01T06:45:00Z" }),
+    event({
+      status: "in_transit",
+      title: "In Transit",
+      occurredAt: "2026-08-01T06:45:00Z",
+    }),
   ];
 
   it("lists observed events first, in the order given", () => {
@@ -205,7 +217,9 @@ describe("buildProgressSteps", () => {
 
   it("leaves the projected location empty when no destination label is given", () => {
     const steps = buildProgressSteps(dubaiEvents, "in_transit");
-    expect(steps.filter((s) => s.projected).every((s) => s.locationLabel === null)).toBe(true);
+    expect(
+      steps.filter((s) => s.projected).every((s) => s.locationLabel === null),
+    ).toBe(true);
   });
 
   it("uses the milestone wording rather than the last event title for projections", () => {
@@ -231,7 +245,10 @@ describe("buildProgressSteps", () => {
   });
 
   it("stops projecting once the shipment is delivered", () => {
-    const events = [...dubaiEvents, event({ status: "delivered", title: "Delivered" })];
+    const events = [
+      ...dubaiEvents,
+      event({ status: "delivered", title: "Delivered" }),
+    ];
     const steps = buildProgressSteps(events, "delivered", "Miami, USA");
     expect(steps).toHaveLength(events.length);
     expect(steps.some((step) => step.projected)).toBe(false);
@@ -241,13 +258,20 @@ describe("buildProgressSteps", () => {
   it("stops projecting once the shipment is returned or cancelled", () => {
     // Nothing further is expected, so offering "Out for Delivery" would be a lie.
     const returned = buildProgressSteps(
-      [...dubaiEvents, event({ status: "returned", title: "Returned to sender" })],
+      [
+        ...dubaiEvents,
+        event({ status: "returned", title: "Returned to sender" }),
+      ],
       "returned",
       "Miami, USA",
     );
     expect(returned.some((step) => step.projected)).toBe(false);
 
-    const cancelled = buildProgressSteps(dubaiEvents, "cancelled", "Miami, USA");
+    const cancelled = buildProgressSteps(
+      dubaiEvents,
+      "cancelled",
+      "Miami, USA",
+    );
     expect(cancelled.some((step) => step.projected)).toBe(false);
   });
 
@@ -277,20 +301,38 @@ describe("buildProgressSteps", () => {
       "out_for_delivery",
       "delivered",
     ]);
-    expect(steps.some((s) => s.projected && s.status === "picked_up")).toBe(false);
-    expect(steps.some((s) => s.projected && s.status === "in_transit")).toBe(false);
+    expect(steps.some((s) => s.projected && s.status === "picked_up")).toBe(
+      false,
+    );
+    expect(steps.some((s) => s.projected && s.status === "in_transit")).toBe(
+      false,
+    );
   });
 
   it("projects from the current status when it is ahead of every event", () => {
     // The rollup can move the shipment forward before the matching scan lands.
-    const steps = buildProgressSteps(dubaiEvents, "out_for_delivery", "Miami, USA");
-    expect(steps.filter((s) => s.projected).map((s) => s.status)).toEqual(["delivered"]);
+    const steps = buildProgressSteps(
+      dubaiEvents,
+      "out_for_delivery",
+      "Miami, USA",
+    );
+    expect(steps.filter((s) => s.projected).map((s) => s.status)).toEqual([
+      "delivered",
+    ]);
   });
 
   it("never projects an off-path status", () => {
     const steps = buildProgressSteps(dubaiEvents, "exception", "Miami, USA");
-    const projectedStatuses = steps.filter((s) => s.projected).map((s) => s.status);
-    for (const status of ["delayed", "exception", "delivery_attempted", "returned", "cancelled"]) {
+    const projectedStatuses = steps
+      .filter((s) => s.projected)
+      .map((s) => s.status);
+    for (const status of [
+      "delayed",
+      "exception",
+      "delivery_attempted",
+      "returned",
+      "cancelled",
+    ]) {
       expect(projectedStatuses).not.toContain(status);
     }
   });

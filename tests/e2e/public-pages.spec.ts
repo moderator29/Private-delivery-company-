@@ -4,7 +4,9 @@ import { PUBLIC_PATHS, collectConsoleErrors } from "./fixtures";
 
 test.describe("public pages", () => {
   for (const path of PUBLIC_PATHS) {
-    test(`${path} returns 200 and renders without console errors`, async ({ page }) => {
+    test(`${path} returns 200 and renders without console errors`, async ({
+      page,
+    }) => {
       const errors = collectConsoleErrors(page);
 
       const response = await page.goto(path);
@@ -48,7 +50,9 @@ test.describe("public pages", () => {
     expect(await sitemap.text()).toContain("<urlset");
   });
 
-  test("an unknown URL renders the not-found page rather than an error", async ({ page }) => {
+  test("an unknown URL renders the not-found page rather than an error", async ({
+    page,
+  }) => {
     const response = await page.goto("/this-page-does-not-exist");
     expect(response?.status()).toBe(404);
     await expect(page.locator("h1")).toHaveCount(1);

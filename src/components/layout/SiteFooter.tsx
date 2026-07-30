@@ -14,7 +14,7 @@ export function SiteFooter({ region = DEFAULT_REGION }: { region?: Region }) {
       <div className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid gap-10 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
           <div className="max-w-sm">
-            <SwiftTrackLogo size="md" />
+            <SwiftTrackLogo size="lg" />
             <p className="mt-4 text-sm leading-relaxed text-ink-600">
               A private delivery company for shipments that need careful handling and a tracking
               record you can rely on.

@@ -46,6 +46,18 @@ export function collectConsoleErrors(page: Page): string[] {
   return errors;
 }
 
+/**
+ * The page's main landmark.
+ *
+ * The site header carries a second copy of the tracking form inside its mobile
+ * menu, which is in the DOM but hidden on a desktop viewport. Scoping to main
+ * targets the form the visitor can actually see, rather than whichever copy
+ * happens to come first in document order.
+ */
+export function main(page: Page) {
+  return page.locator("main#main");
+}
+
 /** True when the document scrolls sideways, which no layout here should. */
 export async function hasHorizontalOverflow(page: Page): Promise<boolean> {
   return page.evaluate(() => {

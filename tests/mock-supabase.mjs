@@ -50,7 +50,14 @@ const MIAMI = {
   longitude: "-80.191800",
 };
 
-function event(status, title, description, occurredAt, place = DUBAI, facilityLabel = null) {
+function event(
+  status,
+  title,
+  description,
+  occurredAt,
+  place = DUBAI,
+  facilityLabel = null,
+) {
   return {
     status,
     title,
@@ -70,7 +77,13 @@ const IN_TRANSIT = {
   tracking_id: TRACKING_IN_TRANSIT,
   status: "in_transit",
   service_level: "standard",
-  sender: { name: "Andrew Goodson", company: null, city: "Dubai", state: null, country: "AE" },
+  sender: {
+    name: "Andrew Goodson",
+    company: null,
+    city: "Dubai",
+    state: null,
+    country: "AE",
+  },
   recipient: {
     name: "Rafael S Angarita",
     company: null,
@@ -132,7 +145,13 @@ const DELIVERED = {
   tracking_id: TRACKING_DELIVERED,
   status: "delivered",
   service_level: "express",
-  sender: { name: "Layla Haddad", company: "Haddad Trading", city: "Dubai", state: null, country: "AE" },
+  sender: {
+    name: "Layla Haddad",
+    company: "Haddad Trading",
+    city: "Dubai",
+    state: null,
+    country: "AE",
+  },
   recipient: {
     name: "Marcus Bell",
     company: null,
@@ -165,7 +184,12 @@ const DELIVERED = {
       "Shipment details received and the waybill was created.",
       "2026-07-29T05:00:00+00:00",
     ),
-    event("picked_up", "Picked Up", "Collected from the sender.", "2026-07-30T07:10:00+00:00"),
+    event(
+      "picked_up",
+      "Picked Up",
+      "Collected from the sender.",
+      "2026-07-30T07:10:00+00:00",
+    ),
     event(
       "in_transit",
       "Departed Origin Facility",
@@ -202,7 +226,13 @@ const DELAYED = {
   tracking_id: TRACKING_DELAYED,
   status: "delayed",
   service_level: "priority",
-  sender: { name: "Omar Rahman", company: null, city: "Dubai", state: null, country: "AE" },
+  sender: {
+    name: "Omar Rahman",
+    company: null,
+    city: "Dubai",
+    state: null,
+    country: "AE",
+  },
   recipient: {
     name: "Priya Nair",
     company: null,
@@ -227,7 +257,12 @@ const DELAYED = {
       "Shipment details received and the waybill was created.",
       "2026-07-30T04:30:00+00:00",
     ),
-    event("picked_up", "Picked Up", "Collected from the sender.", "2026-07-31T07:15:00+00:00"),
+    event(
+      "picked_up",
+      "Picked Up",
+      "Collected from the sender.",
+      "2026-07-31T07:15:00+00:00",
+    ),
     event(
       "in_transit",
       "In Transit",
@@ -275,7 +310,10 @@ const RPC = {
     const trackingId = normalizeTrackingId(body.p_tracking_id);
     const shipment = SHIPMENTS.get(trackingId);
     const canRate = shipment?.status === "delivered";
-    return { status: 200, payload: { can_rate: canRate, rated: false, stars: null } };
+    return {
+      status: 200,
+      payload: { can_rate: canRate, rated: false, stars: null },
+    };
   },
 
   submit_shipment_rating() {
@@ -361,7 +399,10 @@ export function createMockSupabase() {
     if (pathname === "/__health") return send(response, 200, { ok: true });
 
     // Anything else is a call the application is not supposed to be making.
-    return send(response, 404, { code: "PGRST100", message: `No route for ${pathname}` });
+    return send(response, 404, {
+      code: "PGRST100",
+      message: `No route for ${pathname}`,
+    });
   });
 }
 
@@ -400,11 +441,16 @@ export async function startMockSupabase(preferredPort, attempts = 20) {
   );
 }
 
-const isEntrypoint = process.argv[1] && import.meta.url === `file://${process.argv[1]}`;
+const isEntrypoint =
+  process.argv[1] && import.meta.url === `file://${process.argv[1]}`;
 
 if (isEntrypoint) {
-  const preferred = Number(process.argv[2] ?? process.env.MOCK_SUPABASE_PORT ?? 54321);
+  const preferred = Number(
+    process.argv[2] ?? process.env.MOCK_SUPABASE_PORT ?? 54321,
+  );
   startMockSupabase(preferred).then(({ port }) => {
-    process.stdout.write(`mock supabase listening on http://127.0.0.1:${port}\n`);
+    process.stdout.write(
+      `mock supabase listening on http://127.0.0.1:${port}\n`,
+    );
   });
 }

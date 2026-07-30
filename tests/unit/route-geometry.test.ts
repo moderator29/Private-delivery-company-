@@ -30,8 +30,12 @@ describe("hasCoordinates", () => {
   });
 
   it("rejects a non-finite coordinate", () => {
-    expect(hasCoordinates({ latitude: Number.NaN, longitude: 55.2708 })).toBe(false);
-    expect(hasCoordinates({ latitude: 25.2, longitude: Number.POSITIVE_INFINITY })).toBe(false);
+    expect(hasCoordinates({ latitude: Number.NaN, longitude: 55.2708 })).toBe(
+      false,
+    );
+    expect(
+      hasCoordinates({ latitude: 25.2, longitude: Number.POSITIVE_INFINITY }),
+    ).toBe(false);
   });
 });
 
@@ -52,7 +56,10 @@ describe("projectToMap", () => {
   });
 
   it("anchors the projection at the map corners", () => {
-    expect(projectToMap({ latitude: 0, longitude: -180 })).toEqual({ x: 0, y: MAP_HEIGHT / 2 });
+    expect(projectToMap({ latitude: 0, longitude: -180 })).toEqual({
+      x: 0,
+      y: MAP_HEIGHT / 2,
+    });
     expect(projectToMap({ latitude: 0, longitude: 180 })).toEqual({
       x: MAP_WIDTH,
       y: MAP_HEIGHT / 2,
@@ -115,9 +122,26 @@ describe("quadraticAngleAt", () => {
 describe("buildRouteGeometry", () => {
   it("uses real coordinates when both endpoints have them", () => {
     const geometry = buildRouteGeometry(DUBAI, MIAMI, 0.4);
+    const miami = projectToMap(MIAMI)!;
+
     expect(geometry.usesRealCoordinates).toBe(true);
     expect(geometry.from).toEqual(projectToMap(DUBAI));
-    expect(geometry.to).toEqual(projectToMap(MIAMI));
+    // Miami is west of Dubai, so the route is drawn eastbound and the
+    // destination is shifted one world width to keep it on the right.
+    expect(geometry.to).toEqual({ x: miami.x + MAP_WIDTH, y: miami.y });
+  });
+
+  it("draws a long westward route eastbound, so it reads left to right", () => {
+    const geometry = buildRouteGeometry(DUBAI, MIAMI, 0.4);
+    expect(geometry.to.x).toBeGreaterThan(geometry.from.x);
+  });
+
+  it("leaves a short westward hop alone rather than sending it around the globe", () => {
+    // Dubai to Riyadh runs west by roughly eight degrees. Wrapping that would
+    // draw a 500km hop as a circumnavigation.
+    const geometry = buildRouteGeometry(DUBAI, RIYADH, 0.4);
+    expect(geometry.to).toEqual(projectToMap(RIYADH));
+    expect(geometry.viewBox.width).toBeLessThan(MAP_WIDTH);
   });
 
   it("falls back to a neutral left-to-right layout when coordinates are missing", () => {
@@ -134,7 +158,9 @@ describe("buildRouteGeometry", () => {
 
   it("emits an SVG quadratic path between the two endpoints", () => {
     const geometry = buildRouteGeometry(DUBAI, MIAMI, 0.4);
-    expect(geometry.path).toMatch(/^M [\d.-]+ [\d.-]+ Q [\d.-]+ [\d.-]+ [\d.-]+ [\d.-]+$/);
+    expect(geometry.path).toMatch(
+      /^M [\d.-]+ [\d.-]+ Q [\d.-]+ [\d.-]+ [\d.-]+ [\d.-]+$/,
+    );
   });
 
   it("puts the marker on the endpoints at the extremes of progress", () => {
@@ -151,20 +177,28 @@ describe("buildRouteGeometry", () => {
 
   it("keeps the crop inside the map surface for a short hop", () => {
     const { viewBox } = buildRouteGeometry(DUBAI, RIYADH, 0.4);
-    expect(viewBox.x).toBeGreaterThanOrEqual(0);
+    // The vertical crop is clamped to the map, because the projection does not
+    // repeat in that direction. The horizontal crop deliberately is not: an
+    // eastbound route crosses the antimeridian, and the component tiles the
+    // backdrop from -1 to +2 world widths to cover it.
     expect(viewBox.y).toBeGreaterThanOrEqual(0);
-    expect(viewBox.x + viewBox.width).toBeLessThanOrEqual(MAP_WIDTH);
     expect(viewBox.y + viewBox.height).toBeLessThanOrEqual(MAP_HEIGHT);
+    expect(viewBox.x).toBeGreaterThanOrEqual(-MAP_WIDTH);
+    expect(viewBox.x + viewBox.width).toBeLessThanOrEqual(MAP_WIDTH * 2);
     expect(viewBox.width).toBeGreaterThan(0);
     expect(viewBox.height).toBeGreaterThan(0);
   });
 
   it("keeps the crop inside the map surface for a half-globe route", () => {
     const { viewBox } = buildRouteGeometry(DUBAI, MIAMI, 0.4);
-    expect(viewBox.x).toBeGreaterThanOrEqual(0);
+    // The vertical crop is clamped to the map, because the projection does not
+    // repeat in that direction. The horizontal crop deliberately is not: an
+    // eastbound route crosses the antimeridian, and the component tiles the
+    // backdrop from -1 to +2 world widths to cover it.
     expect(viewBox.y).toBeGreaterThanOrEqual(0);
-    expect(viewBox.x + viewBox.width).toBeLessThanOrEqual(MAP_WIDTH);
     expect(viewBox.y + viewBox.height).toBeLessThanOrEqual(MAP_HEIGHT);
+    expect(viewBox.x).toBeGreaterThanOrEqual(-MAP_WIDTH);
+    expect(viewBox.x + viewBox.width).toBeLessThanOrEqual(MAP_WIDTH * 2);
   });
 
   it("crops tighter for a short hop than for a half-globe route", () => {
@@ -173,7 +207,7 @@ describe("buildRouteGeometry", () => {
     expect(short.viewBox.width).toBeLessThan(long.viewBox.width);
   });
 
-  it("keeps the crop inside the map for every pair of extreme endpoints", () => {
+  it("keeps the crop bounded and vertically on the map for extreme endpoints", () => {
     const corners = [
       { latitude: 85, longitude: -180 },
       { latitude: -85, longitude: 180 },
@@ -185,10 +219,15 @@ describe("buildRouteGeometry", () => {
     for (const origin of corners) {
       for (const destination of corners) {
         const { viewBox } = buildRouteGeometry(origin, destination, 0.5);
-        expect(viewBox.x).toBeGreaterThanOrEqual(0);
         expect(viewBox.y).toBeGreaterThanOrEqual(0);
-        expect(viewBox.x + viewBox.width).toBeLessThanOrEqual(MAP_WIDTH + 1e-9);
-        expect(viewBox.y + viewBox.height).toBeLessThanOrEqual(MAP_HEIGHT + 1e-9);
+        // No hard left bound: the component derives its backdrop tiling from
+        // the crop, so any horizontal position is covered. This only guards
+        // against a runaway crop.
+        expect(viewBox.x).toBeGreaterThanOrEqual(-MAP_WIDTH * 2);
+        expect(viewBox.x + viewBox.width).toBeLessThanOrEqual(MAP_WIDTH * 3);
+        expect(viewBox.y + viewBox.height).toBeLessThanOrEqual(
+          MAP_HEIGHT + 1e-9,
+        );
       }
     }
   });

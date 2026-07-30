@@ -27,7 +27,8 @@ function environment(mockPort) {
     NEXT_PUBLIC_SUPABASE_URL: `http://127.0.0.1:${mockPort}`,
     // Length is all the schema checks, and a mock key must never look like a
     // real one that someone might paste somewhere.
-    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_e2e_mock_key_not_a_secret",
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+      "sb_publishable_e2e_mock_key_not_a_secret",
     NEXT_PUBLIC_SITE_URL: `http://127.0.0.1:${APP_PORT}`,
   };
 }
@@ -37,7 +38,9 @@ function run(command, args, env) {
     const child = spawn(command, args, { cwd: ROOT, env, stdio: "inherit" });
     child.on("error", reject);
     child.on("exit", (code) =>
-      code === 0 ? resolve() : reject(new Error(`${command} ${args.join(" ")} exited with ${code}`)),
+      code === 0
+        ? resolve()
+        : reject(new Error(`${command} ${args.join(" ")} exited with ${code}`)),
     );
   });
 }
@@ -53,11 +56,15 @@ async function main() {
   }
 
   process.stdout.write(`[e2e] starting next on http://127.0.0.1:${APP_PORT}\n`);
-  const app = spawn("npx", ["--no-install", "next", "start", "-p", String(APP_PORT)], {
-    cwd: ROOT,
-    env: buildEnv,
-    stdio: "inherit",
-  });
+  const app = spawn(
+    "npx",
+    ["--no-install", "next", "start", "-p", String(APP_PORT)],
+    {
+      cwd: ROOT,
+      env: buildEnv,
+      stdio: "inherit",
+    },
+  );
 
   const stop = () => {
     app.kill("SIGTERM");
@@ -69,6 +76,8 @@ async function main() {
 }
 
 main().catch((error) => {
-  process.stderr.write(`[e2e] ${error instanceof Error ? error.message : String(error)}\n`);
+  process.stderr.write(
+    `[e2e] ${error instanceof Error ? error.message : String(error)}\n`,
+  );
   process.exit(1);
 });

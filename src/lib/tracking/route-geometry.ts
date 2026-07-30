@@ -28,6 +28,9 @@ export interface Point {
 export const MAP_WIDTH = WORLD_MAP_VIEWBOX.width;
 export const MAP_HEIGHT = WORLD_MAP_VIEWBOX.height;
 
+/** A quarter of the world. Beyond this, a westward route is drawn eastbound. */
+const EASTBOUND_WRAP_THRESHOLD = MAP_WIDTH * 0.25;
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
@@ -110,7 +113,22 @@ export function buildRouteGeometry(
   const usesRealCoordinates = projectedOrigin !== null && projectedDestination !== null;
 
   const from = projectedOrigin ?? { x: MAP_WIDTH * 0.2, y: MAP_HEIGHT * 0.45 };
-  const to = projectedDestination ?? { x: MAP_WIDTH * 0.8, y: MAP_HEIGHT * 0.45 };
+  const to = { ...(projectedDestination ?? { x: MAP_WIDTH * 0.8, y: MAP_HEIGHT * 0.45 }) };
+
+  // Long westward routes are drawn eastbound, so the journey reads left to
+  // right across the frame.
+  //
+  // Dubai to Miami runs west, which would otherwise put the destination on the
+  // left and the aircraft flying backwards. Adding one world width sends it east
+  // across the Pacific instead: a real routing direction, and the backdrop is
+  // tiled either side of the seam so the map stays continuous.
+  //
+  // The threshold matters. Without it, a short westward hop such as Dubai to
+  // Riyadh would also wrap and be drawn as a trip around the entire globe. Only
+  // routes spanning more than a quarter of the world are redirected.
+  if (to.x < from.x && from.x - to.x > EASTBOUND_WRAP_THRESHOLD) {
+    to.x += MAP_WIDTH;
+  }
 
   const dx = to.x - from.x;
   const dy = to.y - from.y;
@@ -172,10 +190,11 @@ function computeViewBox(from: Point, to: Point, control: Point) {
     height = desiredHeight;
   }
 
-  // Keep the crop on the map.
-  width = Math.min(width, MAP_WIDTH);
+  // The horizontal crop is deliberately not clamped to one world width: an
+  // eastbound route legitimately crosses the seam, and the backdrop is tiled to
+  // cover it. Only the vertical crop is clamped, since the map does not repeat
+  // in that direction.
   height = Math.min(height, MAP_HEIGHT);
-  x = clamp(x, 0, MAP_WIDTH - width);
   y = clamp(y, 0, MAP_HEIGHT - height);
 
   return { x, y, width, height };

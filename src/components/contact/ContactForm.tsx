@@ -105,7 +105,7 @@ export function ContactForm() {
             <TextInput
               {...props}
               name="trackingId"
-              placeholder="STX9 8475 6532 US"
+              placeholder="STAB 1234 CD56 US"
               autoComplete="off"
               defaultValue={value("trackingId")}
               invalid={Boolean(state.fieldErrors.trackingId)}

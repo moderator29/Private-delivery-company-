@@ -9,7 +9,9 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
       // The real package throws outside React's "react-server" condition, which
       // Vitest does not set. See tests/stubs/server-only.ts.
-      "server-only": fileURLToPath(new URL("./tests/stubs/server-only.ts", import.meta.url)),
+      "server-only": fileURLToPath(
+        new URL("./tests/stubs/server-only.ts", import.meta.url),
+      ),
     },
   },
   test: {

@@ -14,7 +14,9 @@ describe("normalizeTrackingId", () => {
   it("strips the formatting a customer copies from a confirmation email", () => {
     expect(normalizeTrackingId("STX9 8475 6532 US")).toBe("STX984756532US");
     expect(normalizeTrackingId("stx9-8475-6532-us")).toBe("STX984756532US");
-    expect(normalizeTrackingId("  STX9\t8475\n6532 US  ")).toBe("STX984756532US");
+    expect(normalizeTrackingId("  STX9\t8475\n6532 US  ")).toBe(
+      "STX984756532US",
+    );
   });
 
   it("folds confusable characters in the body", () => {
@@ -114,7 +116,10 @@ describe("generateTrackingId", () => {
 
   it("wraps at the alphabet length, since 256 is a multiple of 32", () => {
     const low = generateTrackingId("US", bytes([0, 0, 0, 0, 0, 0, 0, 0, 0, 0]));
-    const high = generateTrackingId("US", bytes([32, 64, 96, 128, 160, 192, 224, 32, 64, 96]));
+    const high = generateTrackingId(
+      "US",
+      bytes([32, 64, 96, 128, 160, 192, 224, 32, 64, 96]),
+    );
     expect(low).toBe("ST0000000000US");
     // Every one of those is a multiple of 32, so all map back to index 0.
     expect(high).toBe("ST0000000000US");
@@ -153,7 +158,9 @@ describe("generateTrackingId", () => {
   });
 
   it("rejects a short random source rather than emitting a weak ID", () => {
-    expect(() => generateTrackingId("US", bytes([1, 2, 3]))).toThrow(/needed 10/);
+    expect(() => generateTrackingId("US", bytes([1, 2, 3]))).toThrow(
+      /needed 10/,
+    );
   });
 
   it("does not collide across a large sample", () => {

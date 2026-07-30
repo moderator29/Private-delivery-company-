@@ -1,9 +1,11 @@
 import { expect, test } from "@playwright/test";
 
-import { PUBLIC_PATHS, TRACKING_IN_TRANSIT } from "./fixtures";
+import { PUBLIC_PATHS, TRACKING_IN_TRANSIT, main } from "./fixtures";
 
 test.describe("keyboard access", () => {
-  test("the skip link is the first tab stop and becomes visible when focused", async ({ page }) => {
+  test("the skip link is the first tab stop and becomes visible when focused", async ({
+    page,
+  }) => {
     await page.goto("/");
 
     await page.keyboard.press("Tab");
@@ -19,7 +21,9 @@ test.describe("keyboard access", () => {
     expect(box!.height).toBeGreaterThan(1);
   });
 
-  test("the skip link moves focus past the navigation to the main content", async ({ page }) => {
+  test("the skip link moves focus past the navigation to the main content", async ({
+    page,
+  }) => {
     await page.goto("/");
 
     await page.keyboard.press("Tab");
@@ -32,15 +36,19 @@ test.describe("keyboard access", () => {
   test("the skip link is present on every public page", async ({ page }) => {
     for (const path of PUBLIC_PATHS) {
       await page.goto(path);
-      await expect(page.getByRole("link", { name: "Skip to main content" })).toBeAttached();
+      await expect(
+        page.getByRole("link", { name: "Skip to main content" }),
+      ).toBeAttached();
     }
   });
 
-  test("the tracking field is reachable and submittable from the keyboard", async ({ page }) => {
+  test("the tracking field is reachable and submittable from the keyboard", async ({
+    page,
+  }) => {
     await page.goto("/track");
 
     // The tracking page autofocuses its field, since that is its only purpose.
-    await expect(page.getByTestId("tracking-input")).toBeFocused();
+    await expect(main(page).getByTestId("tracking-input")).toBeFocused();
     await page.keyboard.type(TRACKING_IN_TRANSIT);
     await page.keyboard.press("Enter");
 

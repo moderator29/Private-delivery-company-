@@ -22,20 +22,28 @@ describe("display timezone", () => {
 describe("formatDateTime", () => {
   it("renders an instant in Gulf Standard Time with the zone shown", () => {
     // 06:45 UTC is 10:45 in Dubai, which is +4 all year.
-    expect(formatDateTime("2026-08-01T06:45:00Z")).toBe("August 1, 2026 10:45 AM GST");
+    expect(formatDateTime("2026-08-01T06:45:00Z")).toBe(
+      "August 1, 2026 10:45 AM GST",
+    );
   });
 
   it("shifts the date when the instant falls on the previous UTC day", () => {
     // 21:30 UTC on 31 July is already 01:30 on 1 August in Dubai.
-    expect(formatDateTime("2026-07-31T21:30:00Z")).toBe("August 1, 2026 1:30 AM GST");
+    expect(formatDateTime("2026-07-31T21:30:00Z")).toBe(
+      "August 1, 2026 1:30 AM GST",
+    );
   });
 
   it("uses long month names and a 12 hour clock", () => {
-    expect(formatDateTime("2026-12-25T14:05:00Z")).toBe("December 25, 2026 6:05 PM GST");
+    expect(formatDateTime("2026-12-25T14:05:00Z")).toBe(
+      "December 25, 2026 6:05 PM GST",
+    );
   });
 
   it("accepts an offset timestamp as Postgres returns it", () => {
-    expect(formatDateTime("2026-08-01T10:45:00+04:00")).toBe("August 1, 2026 10:45 AM GST");
+    expect(formatDateTime("2026-08-01T10:45:00+04:00")).toBe(
+      "August 1, 2026 10:45 AM GST",
+    );
   });
 
   it("returns null for missing or unparseable input", () => {
@@ -135,7 +143,9 @@ describe("formatDaysLabel", () => {
 
 describe("joinParts", () => {
   it("drops empty, blank and missing parts", () => {
-    expect(joinParts(["Miami", null, "Florida", undefined, "", "   "])).toBe("Miami, Florida");
+    expect(joinParts(["Miami", null, "Florida", undefined, "", "   "])).toBe(
+      "Miami, Florida",
+    );
   });
 
   it("trims what it keeps and honours a custom separator", () => {

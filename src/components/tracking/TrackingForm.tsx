@@ -96,7 +96,7 @@ export function TrackingForm({
               setValue(event.target.value);
               if (error) setError(null);
             }}
-            placeholder="STX9 8475 6532 US"
+            placeholder="STAB 1234 CD56 US"
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? errorId : undefined}
             className={cn(
@@ -113,7 +113,7 @@ export function TrackingForm({
           data-testid="track-submit"
           className={cn(
             "group inline-flex shrink-0 items-center justify-center gap-2.5 rounded-full bg-brand-600 font-semibold text-white shadow-[0_6px_16px_-6px_rgba(217,31,46,0.7)] transition-all duration-200 hover:bg-brand-700 hover:shadow-[0_10px_22px_-8px_rgba(217,31,46,0.8)] active:bg-brand-800",
-            large ? "h-14 px-9 text-base sm:min-w-[13.5rem]" : "h-12 px-7 text-[15px] sm:min-w-[11rem]",
+            large ? "h-14 px-8 text-base sm:min-w-[12.5rem]" : "h-12 px-5 text-[15px] sm:min-w-[9.5rem]",
           )}
         >
           <SearchIcon

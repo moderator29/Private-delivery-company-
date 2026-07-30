@@ -97,7 +97,7 @@ export default function OpenGraphImage() {
               fontWeight: 600,
             }}
           >
-            STX9 8475 6532 US
+            STAB 1234 CD56 US
           </div>
           <span>Every scan on the record</span>
         </div>

@@ -21,7 +21,7 @@ export function Hero() {
       />
 
       <Container className="relative py-14 pb-20 sm:py-20 sm:pb-24">
-        <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,27rem)]">
+        <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,29rem)]">
           <div className="max-w-xl">
             <p className="inline-flex items-center gap-2 rounded-full border border-ink-200 bg-white px-3 py-1.5 text-xs font-semibold tracking-[0.1em] text-ink-600 uppercase shadow-subtle">
               <span className="size-1.5 rounded-full bg-brand-600" />
@@ -73,10 +73,6 @@ export function Hero() {
               Enter the tracking number from your shipping confirmation.
             </p>
             <TrackingForm size="md" className="mt-5" />
-            <p className="mt-4 text-xs leading-relaxed text-ink-500">
-              Tracking numbers look like STX9 8475 6532 US. Spaces, dashes and lower case are all
-              fine, we normalise them for you.
-            </p>
           </div>
         </div>
       </Container>

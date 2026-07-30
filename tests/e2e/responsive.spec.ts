@@ -26,7 +26,10 @@ for (const viewport of VIEWPORTS) {
     test(`${target.name} has no horizontal overflow at ${viewport.width}x${viewport.height}`, async ({
       page,
     }) => {
-      await page.setViewportSize({ width: viewport.width, height: viewport.height });
+      await page.setViewportSize({
+        width: viewport.width,
+        height: viewport.height,
+      });
       await page.goto(target.path);
       await page.waitForLoadState("networkidle");
 
@@ -41,7 +44,9 @@ test("the tracking result stays readable on a phone", async ({ page }) => {
 
   // The two column desktop layout must collapse rather than clip.
   await expect(page.getByTestId("tracking-id")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Shipment Progress" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Shipment Progress" }),
+  ).toBeVisible();
 
   const box = await page.getByTestId("tracking-id").boundingBox();
   expect(box).not.toBeNull();

@@ -6,6 +6,7 @@ import {
   TRACKING_IN_TRANSIT,
   TRACKING_UNKNOWN,
   collectConsoleErrors,
+  main,
 } from "./fixtures";
 
 test.describe("tracking a valid shipment", () => {
@@ -13,9 +14,15 @@ test.describe("tracking a valid shipment", () => {
     await page.goto(`/track/${TRACKING_IN_TRANSIT}`);
   });
 
-  test("shows the current status and the grouped tracking ID", async ({ page }) => {
-    await expect(page.getByRole("heading", { name: "Tracking Result" })).toBeVisible();
-    await expect(page.getByTestId("tracking-id")).toHaveText("STX9 8475 6532 US");
+  test("shows the current status and the grouped tracking ID", async ({
+    page,
+  }) => {
+    await expect(
+      page.getByRole("heading", { name: "Tracking Result" }),
+    ).toBeVisible();
+    await expect(page.getByTestId("tracking-id")).toHaveText(
+      "STX9 8475 6532 US",
+    );
     // The status appears as the live chip beside the heading and again in the
     // detail table, so scope the assertion to the chip.
     await expect(page.getByText("In transit").first()).toBeVisible();
@@ -29,7 +36,9 @@ test.describe("tracking a valid shipment", () => {
       /Dubai, United Arab Emirates.*Miami, Florida, United States/,
     );
     // Stated plainly on the page, because the marker is a progress summary.
-    await expect(page.getByText("SwiftTrack does not publish live GPS positions.")).toBeVisible();
+    await expect(
+      page.getByText("SwiftTrack does not publish live GPS positions."),
+    ).toBeVisible();
   });
 
   test("names the sender and the recipient", async ({ page }) => {
@@ -47,10 +56,14 @@ test.describe("tracking a valid shipment", () => {
 });
 
 test.describe("shipment progress", () => {
-  test("lists recorded scans in order, then the milestones still expected", async ({ page }) => {
+  test("lists recorded scans in order, then the milestones still expected", async ({
+    page,
+  }) => {
     await page.goto(`/track/${TRACKING_IN_TRANSIT}`);
 
-    const progress = page.locator("ol").filter({ hasText: "Shipment Information Received" });
+    const progress = page
+      .locator("ol")
+      .filter({ hasText: "Shipment Information Received" });
     const steps = progress.locator("> li");
 
     await expect(steps).toHaveCount(7);
@@ -63,25 +76,37 @@ test.describe("shipment progress", () => {
     await expect(steps.nth(6)).toContainText("Delivered");
   });
 
-  test("timestamps the recorded scans in chronological order", async ({ page }) => {
+  test("timestamps the recorded scans in chronological order", async ({
+    page,
+  }) => {
     await page.goto(`/track/${TRACKING_IN_TRANSIT}`);
 
-    const progress = page.locator("ol").filter({ hasText: "Shipment Information Received" });
-    const stamps = await progress.locator("> li time").evaluateAll((nodes) =>
-      nodes.map((node) => node.getAttribute("datetime") ?? ""),
-    );
+    const progress = page
+      .locator("ol")
+      .filter({ hasText: "Shipment Information Received" });
+    const stamps = await progress
+      .locator("> li time")
+      .evaluateAll((nodes) =>
+        nodes.map((node) => node.getAttribute("datetime") ?? ""),
+      );
 
     expect(stamps).toHaveLength(4);
     const sorted = [...stamps].sort((a, b) => Date.parse(a) - Date.parse(b));
     expect(stamps).toEqual(sorted);
   });
 
-  test("labels future milestones as expected rather than dating them", async ({ page }) => {
+  test("labels future milestones as expected rather than dating them", async ({
+    page,
+  }) => {
     await page.goto(`/track/${TRACKING_IN_TRANSIT}`);
 
-    const progress = page.locator("ol").filter({ hasText: "Shipment Information Received" });
+    const progress = page
+      .locator("ol")
+      .filter({ hasText: "Shipment Information Received" });
     // Three milestones remain after "In Transit", each shown without a time.
-    await expect(progress.getByText("Expected", { exact: true })).toHaveCount(3);
+    await expect(progress.getByText("Expected", { exact: true })).toHaveCount(
+      3,
+    );
 
     const projected = progress.locator("> li").nth(6);
     await expect(projected).toContainText("Expected");
@@ -94,46 +119,78 @@ test.describe("a delivered shipment", () => {
     await page.goto(`/track/${TRACKING_DELIVERED}`);
 
     await expect(page.getByText("Delivered").first()).toBeVisible();
-    await expect(page.getByText("The package has been delivered.")).toBeVisible();
-    await expect(page.getByText("August 3, 2026 6:25 PM GST")).toBeVisible();
+    await expect(
+      page.getByRole("img", { name: /Current status: Delivered\.$/ }),
+    ).toBeVisible();
+    // Delivered at 14:25 UTC, which is 6:25 PM in the network's timezone.
+    await expect(
+      page.getByText("August 3, 2026 6:25 PM GST").first(),
+    ).toBeVisible();
+    // A delivered shipment shows when it arrived, not an estimate.
+    await expect(page.getByText("Estimated Delivery")).toHaveCount(0);
   });
 
   test("offers the rating form", async ({ page }) => {
     await page.goto(`/track/${TRACKING_DELIVERED}`);
 
-    await expect(page.getByRole("heading", { name: "How was this delivery?" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "How was this delivery?" }),
+    ).toBeVisible();
     await expect(page.getByRole("radio", { name: /5 stars/ })).toBeAttached();
     // The button stays disabled until a rating is chosen.
     const submit = page.getByRole("button", { name: "Submit rating" });
     await expect(submit).toBeDisabled();
-    await page.getByRole("radio", { name: /4 stars/ }).check();
+
+    // The radio is deliberately hidden behind its star graphic, so drive it the
+    // way a keyboard user does rather than clicking through the decoration.
+    await page.getByRole("radio", { name: /4 stars/ }).check({ force: true });
     await expect(submit).toBeEnabled();
   });
 
-  test("stops projecting milestones once the journey is over", async ({ page }) => {
+  test("stops projecting milestones once the journey is over", async ({
+    page,
+  }) => {
     await page.goto(`/track/${TRACKING_DELIVERED}`);
 
-    const progress = page.locator("ol").filter({ hasText: "Shipment Information Received" });
+    const progress = page
+      .locator("ol")
+      .filter({ hasText: "Shipment Information Received" });
     await expect(progress.locator("> li")).toHaveCount(6);
-    await expect(progress.getByText("Expected", { exact: true })).toHaveCount(0);
+    await expect(progress.getByText("Expected", { exact: true })).toHaveCount(
+      0,
+    );
   });
 
-  test("does not offer a rating form on a shipment still in transit", async ({ page }) => {
+  test("does not offer a rating form on a shipment still in transit", async ({
+    page,
+  }) => {
     await page.goto(`/track/${TRACKING_IN_TRANSIT}`);
-    await expect(page.getByRole("heading", { name: "How was this delivery?" })).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", { name: "How was this delivery?" }),
+    ).toHaveCount(0);
   });
 });
 
 test.describe("a shipment needing attention", () => {
-  test("raises the alert and keeps the route marker still", async ({ page }) => {
+  test("raises the alert and keeps the route marker still", async ({
+    page,
+  }) => {
     await page.goto(`/track/${TRACKING_DELAYED}`);
 
-    const alert = page.getByRole("alert").filter({ hasText: "This shipment is marked delayed" });
+    const alert = main(page)
+      .getByRole("status")
+      .filter({ hasText: "This shipment is marked delayed" });
     await expect(alert).toBeVisible();
-    await expect(alert).toContainText("Contact support with your tracking number");
+    await expect(alert).toContainText(
+      "Contact support with your tracking number",
+    );
 
-    // The delay itself is a recorded scan, so it appears in the timeline.
-    await expect(page.getByText("Delayed in Transit")).toBeVisible();
+    // The delay itself is a recorded scan, so it appears in the timeline as the
+    // current step rather than only in the header alert.
+    const timeline = page
+      .locator("ol")
+      .filter({ hasText: "Shipment Information Received" });
+    await expect(timeline.getByText("Delayed in Transit")).toBeVisible();
   });
 
   test("does not raise the alert on a healthy shipment", async ({ page }) => {
@@ -147,11 +204,17 @@ test.describe("an unknown tracking number", () => {
     const response = await page.goto(`/track/${TRACKING_UNKNOWN}`);
 
     expect(response?.status()).toBe(200);
-    await expect(page.getByRole("heading", { name: "We could not find that shipment" })).toBeVisible();
-    await expect(page.getByText("No shipment matches that tracking number")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "We could not find that shipment" }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("No shipment matches that tracking number"),
+    ).toBeVisible();
     // A dead end is not acceptable: the visitor is offered another try.
-    await expect(page.getByTestId("tracking-input")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Tracking support" })).toBeVisible();
+    await expect(main(page).getByTestId("tracking-input")).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Tracking support" }),
+    ).toBeVisible();
   });
 
   test("leaks no database or infrastructure wording", async ({ page }) => {
@@ -171,15 +234,21 @@ test.describe("an unknown tracking number", () => {
       "stack",
       "pgrst",
     ]) {
-      expect(body, `not-found page must not mention "${leak}"`).not.toContain(leak);
+      expect(body, `not-found page must not mention "${leak}"`).not.toContain(
+        leak,
+      );
     }
 
     expect(errors).toEqual([]);
   });
 
-  test("answers a malformed number exactly as it answers an unknown one", async ({ page }) => {
+  test("answers a malformed number exactly as it answers an unknown one", async ({
+    page,
+  }) => {
     // Distinguishing them would confirm which well formed numbers are real.
     await page.goto("/track/NOT-A-TRACKING-NUMBER");
-    await expect(page.getByRole("heading", { name: "We could not find that shipment" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "We could not find that shipment" }),
+    ).toBeVisible();
   });
 });

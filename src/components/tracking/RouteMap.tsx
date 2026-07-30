@@ -1,5 +1,5 @@
 import { formatDateTime } from "@/lib/format";
-import { buildRouteGeometry } from "@/lib/tracking/route-geometry";
+import { buildRouteGeometry, MAP_WIDTH } from "@/lib/tracking/route-geometry";
 import type { TrackedShipment } from "@/lib/tracking/shipment";
 import { STATUS_META } from "@/lib/tracking/status";
 import { WORLD_MAP_PATH } from "@/lib/tracking/world-map";
@@ -27,6 +27,16 @@ export function RouteMap({ shipment }: { shipment: TrackedShipment }) {
   const latest = shipment.latestEvent;
   const { viewBox } = geometry;
 
+  // The backdrop is tiled across whichever world copies the crop actually spans,
+  // derived from the viewBox rather than hardcoded, so an eastbound route that
+  // crosses the seam never exposes empty space beside the map.
+  const firstTile = Math.floor(viewBox.x / MAP_WIDTH);
+  const lastTile = Math.floor((viewBox.x + viewBox.width) / MAP_WIDTH);
+  const tileOffsets = Array.from(
+    { length: lastTile - firstTile + 1 },
+    (_, index) => (firstTile + index) * MAP_WIDTH,
+  );
+
   // Label offsets are expressed in viewBox units, which change with the crop,
   // so they are scaled to stay visually constant at any zoom level.
   const scale = viewBox.width / 1000;
@@ -41,15 +51,20 @@ export function RouteMap({ shipment }: { shipment: TrackedShipment }) {
           role="img"
           aria-label={`Route map from ${shipment.origin.label} to ${shipment.destination.label}. Current status: ${meta.label}.`}
         >
-          {/* Landmasses. Low contrast on purpose: this is a backdrop. */}
-          <path d={WORLD_MAP_PATH} fill="#d7dfea" fillRule="evenodd" opacity="0.75" />
-          <path
-            d={WORLD_MAP_PATH}
-            fill="none"
-            stroke="#c3cedd"
-            strokeWidth={u(1.2)}
-            fillRule="evenodd"
-          />
+          {/* Landmasses. Low contrast on purpose: this is a backdrop, not the
+              subject. */}
+          {tileOffsets.map((offset) => (
+            <g key={offset} transform={`translate(${offset} 0)`}>
+              <path d={WORLD_MAP_PATH} fill="#d7dfea" fillRule="evenodd" opacity="0.75" />
+              <path
+                d={WORLD_MAP_PATH}
+                fill="none"
+                stroke="#c3cedd"
+                strokeWidth={u(1.2)}
+                fillRule="evenodd"
+              />
+            </g>
+          ))}
 
           {/* Full route, then the travelled portion over it. */}
           <path
@@ -78,6 +93,7 @@ export function RouteMap({ shipment }: { shipment: TrackedShipment }) {
             country={shipment.origin.countryName}
             scale={u}
             reached
+            align="end"
           />
           <RoutePin
             point={geometry.to}
@@ -85,7 +101,6 @@ export function RouteMap({ shipment }: { shipment: TrackedShipment }) {
             country={shipment.destination.countryName}
             scale={u}
             reached={shipment.status === "delivered"}
-            align="end"
           />
 
           {shipment.isMoving ? (
@@ -124,7 +139,7 @@ export function RouteMap({ shipment }: { shipment: TrackedShipment }) {
         <span>
           Route built from recorded scan events.
           {geometry.usesRealCoordinates
-            ? " Cities are placed at their real coordinates."
+            ? " Cities are placed at their real coordinates, routed eastbound."
             : " Coordinates are not on file for this shipment, so the endpoints are shown schematically."}{" "}
           SwiftTrack does not publish live GPS positions. The latest confirmed scan is shown above.
         </span>

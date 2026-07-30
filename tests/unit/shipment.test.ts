@@ -88,7 +88,8 @@ function payload(overrides: Record<string, unknown> = {}) {
       {
         status: "in_transit",
         title: "Departed Origin Facility",
-        description: "Processed for export and released from the Dubai gateway.",
+        description:
+          "Processed for export and released from the Dubai gateway.",
         facility_label: "Dubai Gateway",
         city: "Dubai",
         state: null,
@@ -100,7 +101,8 @@ function payload(overrides: Record<string, unknown> = {}) {
       {
         status: "in_transit",
         title: "In Transit",
-        description: "Departed Dubai on the linehaul to the destination country.",
+        description:
+          "Departed Dubai on the linehaul to the destination country.",
         facility_label: null,
         city: "Dubai",
         state: null,
@@ -126,7 +128,9 @@ describe("parseTrackedShipment", () => {
   });
 
   it("rejects a payload with a status outside the enum", () => {
-    expect(parseTrackedShipment(payload({ status: "lost_in_space" }))).toBeNull();
+    expect(
+      parseTrackedShipment(payload({ status: "lost_in_space" })),
+    ).toBeNull();
   });
 
   it("rejects a payload missing a required section", () => {
@@ -156,7 +160,14 @@ describe("parseTrackedShipment", () => {
   it("treats an unparseable or empty numeric as absent instead of NaN", () => {
     const shipment = parseTrackedShipment(
       payload({
-        package: { package_type: "Document", piece_count: 1, weight_kg: "", length_cm: "n/a", width_cm: null, height_cm: null },
+        package: {
+          package_type: "Document",
+          piece_count: 1,
+          weight_kg: "",
+          length_cm: "n/a",
+          width_cm: null,
+          height_cm: null,
+        },
       }),
     )!;
     expect(shipment.package.weightKg).toBeNull();
@@ -173,7 +184,15 @@ describe("parseTrackedShipment", () => {
 
   it("falls back to a stated absence when a place has nothing on file", () => {
     const shipment = parseTrackedShipment(
-      payload({ origin: { city: null, state: null, country: null, latitude: null, longitude: null } }),
+      payload({
+        origin: {
+          city: null,
+          state: null,
+          country: null,
+          latitude: null,
+          longitude: null,
+        },
+      }),
     )!;
     expect(shipment.origin.label).toBe("Not available");
     expect(shipment.origin.shortLabel).toBe("Not available");
@@ -218,7 +237,9 @@ describe("parseTrackedShipment", () => {
   it("reduces the sender to a single city line, since no street is published", () => {
     const shipment = parseTrackedShipment(payload())!;
     expect(shipment.sender.name).toBe("Andrew Goodson");
-    expect(shipment.sender.addressLines).toEqual(["Dubai, United Arab Emirates"]);
+    expect(shipment.sender.addressLines).toEqual([
+      "Dubai, United Arab Emirates",
+    ]);
   });
 
   it("computes planned transit days from pickup to the estimated delivery date", () => {
@@ -230,7 +251,10 @@ describe("parseTrackedShipment", () => {
 
   it("computes actual transit days from pickup to delivery once delivered", () => {
     const shipment = parseTrackedShipment(
-      payload({ status: "delivered", delivered_at: "2026-08-05T07:15:00+00:00" }),
+      payload({
+        status: "delivered",
+        delivered_at: "2026-08-05T07:15:00+00:00",
+      }),
     )!;
     expect(shipment.transitDays).toBe(5);
     expect(shipment.transitIsEstimate).toBe(false);
@@ -247,14 +271,28 @@ describe("parseTrackedShipment", () => {
 
     const partial = parseTrackedShipment(
       payload({
-        package: { package_type: "Box", piece_count: 1, weight_kg: "2", length_cm: "30", width_cm: "22", height_cm: null },
+        package: {
+          package_type: "Box",
+          piece_count: 1,
+          weight_kg: "2",
+          length_cm: "30",
+          width_cm: "22",
+          height_cm: null,
+        },
       }),
     )!;
     expect(partial.package.dimensionsLabel).toBeNull();
 
     const complete = parseTrackedShipment(
       payload({
-        package: { package_type: "Box", piece_count: 2, weight_kg: "2.00", length_cm: "30", width_cm: "22", height_cm: "4" },
+        package: {
+          package_type: "Box",
+          piece_count: 2,
+          weight_kg: "2.00",
+          length_cm: "30",
+          width_cm: "22",
+          height_cm: "4",
+        },
       }),
     )!;
     expect(complete.package.dimensionsLabel).toBe("30 x 22 x 4 cm");
@@ -292,7 +330,10 @@ describe("parseTrackedShipment", () => {
     expect(delayed.journeyFraction).toBe(0.5);
 
     const delivered = parseTrackedShipment(
-      payload({ status: "delivered", delivered_at: "2026-08-05T07:15:00+00:00" }),
+      payload({
+        status: "delivered",
+        delivered_at: "2026-08-05T07:15:00+00:00",
+      }),
     )!;
     expect(delivered.isMoving).toBe(false);
     expect(delivered.journeyFraction).toBeCloseTo(1);
@@ -301,11 +342,11 @@ describe("parseTrackedShipment", () => {
   it("builds the progress list from the events plus the milestones still to come", () => {
     const shipment = parseTrackedShipment(payload())!;
     expect(shipment.progress.filter((step) => !step.projected)).toHaveLength(4);
-    expect(shipment.progress.filter((step) => step.projected).map((step) => step.status)).toEqual([
-      "arrived_at_facility",
-      "out_for_delivery",
-      "delivered",
-    ]);
+    expect(
+      shipment.progress
+        .filter((step) => step.projected)
+        .map((step) => step.status),
+    ).toEqual(["arrived_at_facility", "out_for_delivery", "delivered"]);
     // Projected steps are labelled with the destination's short form.
     expect(shipment.progress.at(-1)!.locationLabel).toBe("Miami, USA");
   });
