@@ -4,6 +4,13 @@ import { redirect } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Enums, Tables } from "@/lib/supabase/types";
+import {
+  DEFAULT_PAGE_SIZE,
+  MAX_PAGE_SIZE,
+  isShipmentSortField,
+  type ShipmentListQuery,
+  type ShipmentSortField,
+} from "@/lib/shipment-query";
 import type { ShipmentStatus } from "@/lib/tracking/status";
 
 export type AdminRole = Enums<"admin_role">;
@@ -136,19 +143,6 @@ export async function getDashboardCounts(): Promise<DashboardCounts> {
 // Shipment list
 // ---------------------------------------------------------------------------
 
-export const SHIPMENT_SORT_FIELDS = ["created_at", "updated_at", "estimated_delivery_date"] as const;
-export type ShipmentSortField = (typeof SHIPMENT_SORT_FIELDS)[number];
-
-export interface ShipmentListQuery {
-  search?: string;
-  status?: ShipmentStatus | "all";
-  archived?: "active" | "archived" | "all";
-  sort?: ShipmentSortField;
-  direction?: "asc" | "desc";
-  page?: number;
-  pageSize?: number;
-}
-
 export interface ShipmentListResult {
   rows: ShipmentRow[];
   total: number;
@@ -156,8 +150,6 @@ export interface ShipmentListResult {
   pageSize: number;
   pageCount: number;
 }
-
-export const DEFAULT_PAGE_SIZE = 20;
 
 /**
  * Paginated, filterable shipment list.
@@ -170,10 +162,11 @@ export async function listShipments(query: ShipmentListQuery = {}): Promise<Ship
   const supabase = await createSupabaseServerClient();
 
   const page = Math.max(1, Math.floor(query.page ?? 1));
-  const pageSize = Math.min(100, Math.max(5, Math.floor(query.pageSize ?? DEFAULT_PAGE_SIZE)));
-  const sort: ShipmentSortField = SHIPMENT_SORT_FIELDS.includes(query.sort as ShipmentSortField)
-    ? (query.sort as ShipmentSortField)
-    : "created_at";
+  const pageSize = Math.min(
+    MAX_PAGE_SIZE,
+    Math.max(5, Math.floor(query.pageSize ?? DEFAULT_PAGE_SIZE)),
+  );
+  const sort: ShipmentSortField = isShipmentSortField(query.sort) ? query.sort : "created_at";
   const ascending = query.direction === "asc";
 
   let builder = supabase.from("shipments").select("*", { count: "exact" });

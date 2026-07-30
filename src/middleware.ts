@@ -17,9 +17,26 @@ import { createServerClient } from "@supabase/ssr";
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+  // Without Supabase configured there is no session to refresh and nobody can
+  // be signed in. Public pages still render; /admin sends visitors to the login
+  // page, which explains what is missing. Failing hard here would take the
+  // whole site down over a misconfigured operations area.
+  if (!supabaseUrl || !supabaseKey) {
+    const { pathname } = request.nextUrl;
+    if (pathname.startsWith("/admin") && pathname !== "/admin/login") {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/admin/login";
+      return NextResponse.redirect(redirectUrl);
+    }
+    return response;
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    supabaseUrl,
+    supabaseKey,
     {
       cookies: {
         getAll() {

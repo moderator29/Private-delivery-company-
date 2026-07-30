@@ -115,7 +115,7 @@ export function buildRouteGeometry(
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const distance = Math.sqrt(dx * dx + dy * dy);
-  const lift = clamp(distance * 0.3, 40, 130);
+  const lift = clamp(distance * 0.34, 52, 150);
 
   const control: Point = {
     x: (from.x + to.x) / 2,
@@ -149,8 +149,11 @@ function computeViewBox(from: Point, to: Point, control: Point) {
   const minY = Math.min(from.y, to.y, control.y);
   const maxY = Math.max(from.y, to.y);
 
-  const marginX = Math.max(110, (maxX - minX) * 0.22);
-  const marginY = Math.max(70, (maxY - minY) * 0.35);
+  // Generous margins on purpose. Cropped tightly around two pins, the
+  // simplified world silhouette reads as abstract shapes; with enough
+  // surrounding landmass in frame it reads as a map.
+  const marginX = Math.max(190, (maxX - minX) * 0.34);
+  const marginY = Math.max(90, (maxY - minY) * 0.4);
 
   let x = minX - marginX;
   let y = minY - marginY;

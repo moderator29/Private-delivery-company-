@@ -4,8 +4,9 @@ import { SwiftTrackLogo } from "@/components/brand/SwiftTrackLogo";
 import { MailIcon, PhoneIcon } from "@/components/ui/icons";
 import { BRAND } from "@/lib/brand";
 import { FOOTER_NAV } from "@/lib/navigation";
+import { DEFAULT_REGION, type Region } from "@/lib/regions";
 
-export function SiteFooter() {
+export function SiteFooter({ region = DEFAULT_REGION }: { region?: Region }) {
   const year = new Date().getFullYear();
 
   return (
@@ -28,12 +29,15 @@ export function SiteFooter() {
                 {BRAND.supportEmail}
               </a>
               <a
-                href={`tel:${BRAND.supportPhone.replace(/[^+\d]/g, "")}`}
+                href={`tel:${region.supportPhone.replace(/[^+\d]/g, "")}`}
                 className="inline-flex items-center gap-2 text-ink-700 hover:text-brand-600"
               >
                 <PhoneIcon className="size-4 text-ink-400" />
-                {BRAND.supportPhone}
+                {region.supportPhone}
               </a>
+              <span className="text-xs text-ink-500">
+                {region.name} desk - {region.supportHours}
+              </span>
             </div>
           </div>
 

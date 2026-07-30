@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { EditorialSection } from "@/components/home/EditorialSection";
 import { Hero } from "@/components/home/Hero";
 import {
   ProcessSteps,
@@ -8,6 +9,7 @@ import {
   ValueProps,
 } from "@/components/home/HomeSections";
 import { PerformancePanel } from "@/components/home/PerformancePanel";
+import { QuickActions } from "@/components/home/QuickActions";
 import { Container, SectionHeading } from "@/components/ui/Surface";
 import { absoluteUrl } from "@/lib/env";
 
@@ -29,6 +31,7 @@ export default function HomePage() {
   return (
     <>
       <Hero />
+      <QuickActions />
       <ValueProps />
       <ProcessSteps />
 
@@ -46,6 +49,7 @@ export default function HomePage() {
         </Container>
       </section>
 
+      <EditorialSection />
       <ServicePreview />
       <SupportBand />
     </>

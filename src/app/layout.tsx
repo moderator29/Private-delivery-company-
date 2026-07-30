@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 
 import { BRAND } from "@/lib/brand";
-import { absoluteUrl, env } from "@/lib/env";
+import { absoluteUrl, siteUrl } from "@/lib/env";
 
 import "./globals.css";
 
@@ -13,7 +13,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(env.NEXT_PUBLIC_SITE_URL),
+  metadataBase: new URL(siteUrl),
   title: {
     default: `${BRAND.name} | ${BRAND.descriptor}`,
     template: `%s | ${BRAND.name}`,

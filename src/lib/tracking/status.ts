@@ -39,42 +39,42 @@ export interface StatusMeta {
 
 export const STATUS_META: Record<ShipmentStatus, StatusMeta> = {
   created: {
-    label: "Shipment created",
+    label: "Shipment Created",
     description: "We have the shipment details and are preparing the label.",
     tone: "neutral",
   },
   label_created: {
-    label: "Label created",
+    label: "Label Created",
     description: "The label is ready and pickup is scheduled.",
     tone: "neutral",
   },
   picked_up: {
-    label: "Picked up",
-    description: "A SwiftTrack courier has collected the package.",
+    label: "Picked Up",
+    description: "A SwiftTrack courier has collected your package.",
     tone: "moving",
   },
   in_transit: {
-    label: "In transit",
-    description: "The package is moving through our network.",
+    label: "In Transit",
+    description: "Your package is on its way.",
     tone: "moving",
   },
   arrived_at_facility: {
-    label: "Arrived at destination country",
+    label: "Arrived at Destination Country",
     description: "The package has cleared into the destination country.",
     tone: "moving",
   },
   out_for_delivery: {
-    label: "Out for delivery",
-    description: "The package is with a courier for delivery today.",
+    label: "Out for Delivery",
+    description: "Your package is with a courier for delivery today.",
     tone: "moving",
   },
   delivered: {
     label: "Delivered",
-    description: "The package has been delivered.",
+    description: "Your package has been delivered.",
     tone: "delivered",
   },
   delivery_attempted: {
-    label: "Delivery attempted",
+    label: "Delivery Attempted",
     description: "We tried to deliver and will attempt again.",
     tone: "attention",
   },
@@ -89,7 +89,7 @@ export const STATUS_META: Record<ShipmentStatus, StatusMeta> = {
     tone: "attention",
   },
   returned: {
-    label: "Returned to sender",
+    label: "Returned to Sender",
     description: "The package is on its way back to the sender.",
     tone: "stopped",
   },

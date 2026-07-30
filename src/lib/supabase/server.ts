@@ -3,7 +3,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
-import { env } from "@/lib/env";
+import { getSupabaseEnv } from "@/lib/env";
 import type { Database } from "@/lib/supabase/types";
 
 /**
@@ -15,6 +15,7 @@ import type { Database } from "@/lib/supabase/types";
  */
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
+  const env = getSupabaseEnv();
 
   return createServerClient<Database>(
     env.NEXT_PUBLIC_SUPABASE_URL,
@@ -45,6 +46,8 @@ export async function createSupabaseServerClient() {
  * what a visitor sees.
  */
 export function createSupabaseAnonClient() {
+  const env = getSupabaseEnv();
+
   return createServerClient<Database>(
     env.NEXT_PUBLIC_SUPABASE_URL,
     env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,

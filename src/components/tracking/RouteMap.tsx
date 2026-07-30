@@ -104,7 +104,7 @@ export function RouteMap({ shipment }: { shipment: TrackedShipment }) {
 
         {/* Latest scan card, centred over the map as in the reference layout. */}
         {latest ? (
-          <div className="absolute inset-x-4 bottom-4 sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:w-[19.5rem] sm:-translate-x-1/2">
+          <div className="absolute inset-x-4 bottom-4 sm:inset-x-auto sm:bottom-5 sm:left-5 sm:w-[19rem]">
             <div className="rounded-xl border border-ink-200 bg-white/97 px-4 py-3 shadow-raised backdrop-blur-sm">
               <p className="flex items-center gap-2 text-[15px] font-bold text-ink-900">
                 <PlaneIcon className="size-[18px] text-brand-600" />

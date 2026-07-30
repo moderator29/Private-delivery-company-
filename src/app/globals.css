@@ -97,8 +97,12 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Icons must not squash inside a flex row, but an illustration set to
+     w-full must still be allowed to shrink below its intrinsic width, or it
+     pushes the page wider than the viewport on small screens. */
   svg {
     flex-shrink: 0;
+    max-width: 100%;
   }
 }
 

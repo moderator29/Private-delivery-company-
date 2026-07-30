@@ -20,7 +20,7 @@ export function Hero() {
         className="pointer-events-none absolute -top-32 -right-24 size-[28rem] rounded-full bg-brand-50/70 blur-3xl"
       />
 
-      <Container className="relative py-14 sm:py-20">
+      <Container className="relative py-14 pb-20 sm:py-20 sm:pb-24">
         <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,27rem)]">
           <div className="max-w-xl">
             <p className="inline-flex items-center gap-2 rounded-full border border-ink-200 bg-white px-3 py-1.5 text-xs font-semibold tracking-[0.1em] text-ink-600 uppercase shadow-subtle">
