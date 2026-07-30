@@ -44,20 +44,23 @@ values
 on conflict (id) do nothing;
 
 insert into public.shipments (
-  tracking_id, origin_city, origin_state, destination_city, destination_state,
-  sender_name, recipient_name, recipient_phone, internal_notes
+  tracking_id, origin_city, origin_state, origin_address_line1,
+  destination_city, destination_state,
+  sender_name, recipient_name, recipient_phone, recipient_email, internal_notes
 ) values (
-  'STTEST000001', 'Newark', 'NJ', 'Boston', 'MA',
-  'Fixture Sender', 'Fixture Recipient', '+1 555 0000', 'internal only'
+  'STTEST000001AE', 'Dubai', null, '12 Fixture Sender Street',
+  'Boston', 'MA',
+  'Fixture Sender', 'Fixture Recipient', '+1 555 0000', 'fixture-recipient@swifttrack.test',
+  'internal only'
 ) on conflict (tracking_id) do nothing;
 
 insert into public.shipment_events (shipment_id, status, title, city, state, is_public)
 select id, 'in_transit', 'Fixture public event', 'Newark', 'NJ', true
-from public.shipments where tracking_id = 'STTEST000001';
+from public.shipments where tracking_id = 'STTEST000001AE';
 
 insert into public.shipment_events (shipment_id, status, title, city, state, is_public)
 select id, 'exception', 'Fixture internal event', 'Newark', 'NJ', false
-from public.shipments where tracking_id = 'STTEST000001';
+from public.shipments where tracking_id = 'STTEST000001AE';
 
 insert into public.support_requests (name, email, subject, message)
 values ('Fixture Person', 'fixture@swifttrack.test', 'Fixture subject', 'Fixture message body long enough.')
@@ -145,16 +148,23 @@ select pg_temp.expect('anon', 'cannot read shipment_events',  'select * from pub
 select pg_temp.expect('anon', 'cannot read admin_users',      'select * from public.admin_users',      true);
 select pg_temp.expect('anon', 'cannot read audit_logs',       'select * from public.audit_logs',       true);
 select pg_temp.expect('anon', 'cannot read support_requests', 'select * from public.support_requests', true);
+-- Every insert attempt below supplies tracking_id explicitly, the way the admin
+-- create flow does (src/app/admin/(dashboard)/shipments/actions.ts builds it in
+-- TypeScript). Leaving it out makes the column default fire
+-- public.generate_tracking_id('US'), which 0006 grants to service_role only, so
+-- the statement dies on a function privilege before any policy is consulted.
+-- These checks exist to prove the policies deny the write, so they must not be
+-- allowed to pass on an unrelated grant.
 select pg_temp.expect('anon', 'cannot insert shipments',
-  $q$insert into public.shipments (origin_city, origin_state, destination_city, destination_state)
-     values ('X','NY','Y','CA')$q$, true);
+  $q$insert into public.shipments (tracking_id, origin_city, origin_state, destination_city, destination_state)
+     values ('STTEST000010US','X','NY','Y','CA')$q$, true);
 select pg_temp.expect('anon', 'cannot insert support_requests',
   $q$insert into public.support_requests (name, email, subject, message)
      values ('a','a@b.co','s','long enough message')$q$, true);
 select pg_temp.expect('anon', 'cannot call generate_tracking_id',
   'select public.generate_tracking_id()', true);
 select pg_temp.expect('anon', 'CAN call track_shipment',
-  $q$select public.track_shipment('STTEST000001') where public.track_shipment('STTEST000001') is not null$q$, false);
+  $q$select public.track_shipment('STTEST000001AE') where public.track_shipment('STTEST000001AE') is not null$q$, false);
 
 select pg_temp.become_superuser();
 
@@ -164,7 +174,7 @@ declare
   payload text;
 begin
   perform set_config('role', 'anon', true);
-  payload := public.track_shipment('STTEST000001')::text;
+  payload := public.track_shipment('STTEST000001AE')::text;
   perform set_config('role', 'none', true);
 
   insert into rls_results (area, check_name, expected, actual, passed) values
@@ -174,9 +184,20 @@ begin
     ('anon', 'track_shipment hides internal notes', 'denied',
      case when payload like '%internal only%' then 'notes leaked' else 'absent' end,
      payload not like '%internal only%'),
-    ('anon', 'track_shipment hides full recipient name', 'denied',
-     case when payload like '%Fixture Recipient%' then 'name leaked' else 'masked' end,
-     payload not like '%Fixture Recipient%'),
+    ('anon', 'track_shipment hides email addresses', 'denied',
+     case when payload like '%fixture-recipient@swifttrack.test%' then 'email leaked' else 'absent' end,
+     payload not like '%fixture-recipient@swifttrack.test%'),
+    ('anon', 'track_shipment hides the sender street address', 'denied',
+     case when payload like '%12 Fixture Sender Street%' then 'address leaked' else 'absent' end,
+     payload not like '%12 Fixture Sender Street%'),
+    -- The recipient's own name and delivery address are returned on purpose:
+    -- the tracking page exists so a recipient can confirm where their parcel is
+    -- going. See "The recipient address decision" in docs/SECURITY.md. This
+    -- asserts the decision rather than the reverse, so an accidental change to
+    -- track_shipment() that drops the field is caught as a regression too.
+    ('anon', 'track_shipment returns the recipient name by design', 'allowed',
+     case when payload like '%Fixture Recipient%' then 'present' else 'missing' end,
+     payload like '%Fixture Recipient%'),
     ('anon', 'track_shipment hides internal-only events', 'denied',
      case when payload like '%Fixture internal event%' then 'event leaked' else 'absent' end,
      payload not like '%Fixture internal event%'),
@@ -196,8 +217,8 @@ select pg_temp.expect('authenticated non-admin', 'cannot read support_requests',
 select pg_temp.expect('authenticated non-admin', 'cannot read other admin_users',
   $q$select * from public.admin_users where id <> '00000000-0000-4000-8000-000000000001'$q$, true);
 select pg_temp.expect('authenticated non-admin', 'cannot insert shipments',
-  $q$insert into public.shipments (origin_city, origin_state, destination_city, destination_state)
-     values ('X','NY','Y','CA')$q$, true);
+  $q$insert into public.shipments (tracking_id, origin_city, origin_state, destination_city, destination_state)
+     values ('STTEST000011US','X','NY','Y','CA')$q$, true);
 select pg_temp.expect('authenticated non-admin', 'cannot escalate self to admin',
   $q$insert into public.admin_users (id, email, role)
      values ('00000000-0000-4000-8000-000000000001','rls-outsider@swifttrack.test','owner')$q$, true);
@@ -208,8 +229,8 @@ select pg_temp.become_superuser();
 select pg_temp.become('00000000-0000-4000-8000-000000000004', 'rls-disabled@swifttrack.test');
 select pg_temp.expect('deactivated admin', 'cannot read shipments', 'select * from public.shipments', true);
 select pg_temp.expect('deactivated admin', 'cannot insert shipments',
-  $q$insert into public.shipments (origin_city, origin_state, destination_city, destination_state)
-     values ('X','NY','Y','CA')$q$, true);
+  $q$insert into public.shipments (tracking_id, origin_city, origin_state, destination_city, destination_state)
+     values ('STTEST000012US','X','NY','Y','CA')$q$, true);
 select pg_temp.become_superuser();
 
 -- --- viewer: read only -----------------------------------------------------
@@ -218,13 +239,13 @@ select pg_temp.expect('viewer', 'CAN read shipments',       'select * from publi
 select pg_temp.expect('viewer', 'CAN read shipment_events', 'select * from public.shipment_events', false);
 select pg_temp.expect('viewer', 'CAN read audit_logs',      'select * from public.audit_logs',      false);
 select pg_temp.expect('viewer', 'cannot insert shipments',
-  $q$insert into public.shipments (origin_city, origin_state, destination_city, destination_state)
-     values ('X','NY','Y','CA')$q$, true);
+  $q$insert into public.shipments (tracking_id, origin_city, origin_state, destination_city, destination_state)
+     values ('STTEST000013US','X','NY','Y','CA')$q$, true);
 select pg_temp.expect('viewer', 'cannot update shipments',
-  $q$update public.shipments set status = 'delivered' where tracking_id = 'STTEST000001'$q$, true);
+  $q$update public.shipments set status = 'delivered' where tracking_id = 'STTEST000001AE'$q$, true);
 select pg_temp.expect('viewer', 'cannot insert events',
   $q$insert into public.shipment_events (shipment_id, status, title)
-     select id, 'delivered', 'nope' from public.shipments where tracking_id = 'STTEST000001'$q$, true);
+     select id, 'delivered', 'nope' from public.shipments where tracking_id = 'STTEST000001AE'$q$, true);
 select pg_temp.expect('viewer', 'cannot manage staff',
   $q$update public.admin_users set role = 'owner' where id = '00000000-0000-4000-8000-000000000002'$q$, true);
 select pg_temp.become_superuser();
@@ -233,19 +254,19 @@ select pg_temp.become_superuser();
 select pg_temp.become('00000000-0000-4000-8000-000000000003', 'rls-operator@swifttrack.test');
 select pg_temp.expect('operator', 'CAN read shipments', 'select * from public.shipments', false);
 select pg_temp.expect('operator', 'CAN insert shipments',
-  $q$insert into public.shipments (origin_city, origin_state, destination_city, destination_state)
-     values ('Trenton','NJ','Albany','NY')$q$, false);
+  $q$insert into public.shipments (tracking_id, origin_city, origin_state, destination_city, destination_state)
+     values ('STTEST000002US','Trenton','NJ','Albany','NY')$q$, false);
 select pg_temp.expect('operator', 'CAN insert events',
   $q$insert into public.shipment_events (shipment_id, status, title, city, state)
      select id, 'out_for_delivery', 'Out for delivery', 'Boston', 'MA'
-     from public.shipments where tracking_id = 'STTEST000001'$q$, false);
+     from public.shipments where tracking_id = 'STTEST000001AE'$q$, false);
 select pg_temp.expect('operator', 'CAN archive shipments',
-  $q$update public.shipments set archived_at = now() where tracking_id = 'STTEST000001'$q$, false);
+  $q$update public.shipments set archived_at = now() where tracking_id = 'STTEST000001AE'$q$, false);
 select pg_temp.expect('operator', 'cannot hard delete shipments',
-  $q$delete from public.shipments where tracking_id = 'STTEST000001'$q$, true);
+  $q$delete from public.shipments where tracking_id = 'STTEST000001AE'$q$, true);
 select pg_temp.expect('operator', 'cannot delete events',
   $q$delete from public.shipment_events
-     where shipment_id in (select id from public.shipments where tracking_id = 'STTEST000001')$q$, true);
+     where shipment_id in (select id from public.shipments where tracking_id = 'STTEST000001AE')$q$, true);
 select pg_temp.expect('operator', 'cannot write audit_logs',
   $q$insert into public.audit_logs (action, entity_type) values ('forged','shipments')$q$, true);
 select pg_temp.expect('operator', 'cannot promote self to owner',
@@ -258,7 +279,7 @@ declare
   v_null boolean;
 begin
   perform set_config('role', 'anon', true);
-  v_null := public.track_shipment('STTEST000001') is null;
+  v_null := public.track_shipment('STTEST000001AE') is null;
   perform set_config('role', 'none', true);
   insert into rls_results (area, check_name, expected, actual, passed)
   values ('anon', 'archived shipment is untrackable', 'denied',

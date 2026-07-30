@@ -10,7 +10,7 @@ export default function robots(): MetadataRoute.Robots {
         allow: "/",
         // Individual tracking pages and the operations area are not for
         // indexing. Both also send noindex headers, so this is belt and braces.
-        disallow: ["/admin", "/admin/", "/track/"],
+        disallow: ["/admin", "/admin/", "/track/", "/api/"],
       },
     ],
     sitemap: absoluteUrl("/sitemap.xml"),
