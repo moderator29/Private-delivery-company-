@@ -32,6 +32,10 @@ import {
   formatWeight,
   joinParts,
 } from "@/lib/format";
+import {
+  PAYMENT_STATUS_LABELS,
+  parsePaymentStatus,
+} from "@/lib/tracking/payment";
 import { SERVICE_LEVEL_LABELS } from "@/lib/tracking/shipment";
 import { STATUS_META } from "@/lib/tracking/status";
 import { formatTrackingId } from "@/lib/tracking/tracking-id";
@@ -57,6 +61,7 @@ export default async function ShipmentDetailPage({
   if (!shipment) notFound();
 
   const events = await getShipmentEvents(shipment.id);
+  const paymentStatus = parsePaymentStatus(shipment.payment_status);
   const writable = canWrite(profile.role);
   const publicUrl = absoluteUrl(`/track/${shipment.tracking_id}`);
 
@@ -290,6 +295,30 @@ export default async function ShipmentDetailPage({
               </DetailRow>
             </dl>
           </Card>
+
+          {paymentStatus ? (
+            <Card>
+              <CardHeader
+                title="Recipient payment flow"
+                description="Where this shipment sits in collecting an address from the recipient."
+              />
+              <dl className="px-5 py-4">
+                <DetailRow label="State">
+                  {PAYMENT_STATUS_LABELS[paymentStatus]}
+                </DetailRow>
+                <DetailRow label="Address submitted">
+                  {shipment.recipient_contact_email ?? "Not yet"}
+                </DetailRow>
+                {shipment.recipient_email_submitted_at ? (
+                  <DetailRow label="Submitted">
+                    <time dateTime={shipment.recipient_email_submitted_at}>
+                      {formatDateTime(shipment.recipient_email_submitted_at)}
+                    </time>
+                  </DetailRow>
+                ) : null}
+              </dl>
+            </Card>
+          ) : null}
 
           <Card>
             <CardHeader title="Package and dates" />

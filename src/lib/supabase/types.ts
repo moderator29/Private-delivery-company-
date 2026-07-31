@@ -203,9 +203,14 @@ export type Database = {
           origin_postal_code: string | null;
           origin_state: string | null;
           package_type: string | null;
+          payment_currency: string | null;
+          payment_reference: string | null;
+          payment_status: string | null;
           piece_count: number;
           recipient_company: string | null;
+          recipient_contact_email: string | null;
           recipient_email: string | null;
+          recipient_email_submitted_at: string | null;
           recipient_name: string | null;
           recipient_phone: string | null;
           sender_company: string | null;
@@ -215,6 +220,7 @@ export type Database = {
           service_level: Database["public"]["Enums"]["service_level"];
           shipped_at: string | null;
           status: Database["public"]["Enums"]["shipment_status"];
+          total_amount_due: number | null;
           tracking_id: string;
           updated_at: string;
           weight_kg: number | null;
@@ -249,9 +255,14 @@ export type Database = {
           origin_postal_code?: string | null;
           origin_state: string | null;
           package_type?: string | null;
+          payment_currency?: string | null;
+          payment_reference?: string | null;
+          payment_status?: string | null;
           piece_count?: number;
           recipient_company?: string | null;
+          recipient_contact_email?: string | null;
           recipient_email?: string | null;
+          recipient_email_submitted_at?: string | null;
           recipient_name?: string | null;
           recipient_phone?: string | null;
           sender_company?: string | null;
@@ -261,6 +272,7 @@ export type Database = {
           service_level?: Database["public"]["Enums"]["service_level"];
           shipped_at?: string | null;
           status?: Database["public"]["Enums"]["shipment_status"];
+          total_amount_due?: number | null;
           tracking_id?: string;
           updated_at?: string;
           weight_kg?: number | null;
@@ -295,9 +307,14 @@ export type Database = {
           origin_postal_code?: string | null;
           origin_state?: string | null;
           package_type?: string | null;
+          payment_currency?: string | null;
+          payment_reference?: string | null;
+          payment_status?: string | null;
           piece_count?: number;
           recipient_company?: string | null;
+          recipient_contact_email?: string | null;
           recipient_email?: string | null;
+          recipient_email_submitted_at?: string | null;
           recipient_name?: string | null;
           recipient_phone?: string | null;
           sender_company?: string | null;
@@ -307,6 +324,7 @@ export type Database = {
           service_level?: Database["public"]["Enums"]["service_level"];
           shipped_at?: string | null;
           status?: Database["public"]["Enums"]["shipment_status"];
+          total_amount_due?: number | null;
           tracking_id?: string;
           updated_at?: string;
           weight_kg?: number | null;
@@ -377,6 +395,10 @@ export type Database = {
       normalize_tracking_id: { Args: { p_value: string }; Returns: string };
       service_performance: { Args: never; Returns: Json };
       shipment_rating_state: { Args: { p_tracking_id: string }; Returns: Json };
+      submit_recipient_email: {
+        Args: { p_email: string; p_tracking_id: string };
+        Returns: Json;
+      };
       submit_shipment_rating: {
         Args: {
           p_comment?: string;

@@ -11,6 +11,7 @@ import type { ConsoleMessage, Page } from "@playwright/test";
 export const TRACKING_IN_TRANSIT = "STX984756532US";
 export const TRACKING_DELIVERED = "STDE11VERED1US";
 export const TRACKING_DELAYED = "STDE1AYED123US";
+export const TRACKING_AWAITING_EMAIL = "STEMA1123456US";
 export const TRACKING_UNKNOWN = "STZZ999999ZZUS";
 
 /** Every page a visitor can reach without a tracking number or an account. */

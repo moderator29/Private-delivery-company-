@@ -11,6 +11,7 @@
 import { z } from "zod";
 
 import { countryName, countryShortName } from "@/lib/countries";
+import { parsePaymentStatus, type PaymentStatus } from "./payment";
 import {
   SHIPMENT_STATUSES,
   type ShipmentStatus,
@@ -106,6 +107,13 @@ export const trackShipmentPayloadSchema = z.object({
     width_cm: numericLike,
     height_cm: numericLike,
   }),
+  /**
+   * Optional so a payload from a database that predates migration 0011 still
+   * parses. An absent or unrecognised value means the shipment is not in the
+   * recipient payment flow.
+   */
+  payment_status: z.unknown().optional(),
+  recipient_email_submitted_at: nullableText,
   created_at: z.string(),
   updated_at: z.string(),
   events: z.array(eventSchema),
@@ -175,6 +183,10 @@ export interface TrackedShipment {
   shippedAt: string | null;
   deliveredAt: string | null;
   package: PackageDetails;
+  /** Null when the shipment is outside the recipient payment flow, which is the norm. */
+  paymentStatus: PaymentStatus | null;
+  /** When the recipient submitted their address, if they have. */
+  recipientEmailSubmittedAt: string | null;
   createdAt: string;
   updatedAt: string;
   events: TrackedEvent[];
@@ -348,6 +360,8 @@ export function toTrackedShipment(payload: TrackShipmentPayload): TrackedShipmen
         payload.package.height_cm,
       ),
     },
+    paymentStatus: parsePaymentStatus(payload.payment_status),
+    recipientEmailSubmittedAt: payload.recipient_email_submitted_at,
     createdAt: payload.created_at,
     updatedAt: payload.updated_at,
     events,

@@ -14,6 +14,7 @@ import { Field, Select, TextArea, TextInput } from "@/components/ui/Field";
 import { Card, CardHeader } from "@/components/ui/Surface";
 import { COUNTRY_OPTIONS } from "@/lib/countries";
 import type { ShipmentRow } from "@/lib/data/admin";
+import { PAYMENT_STATUSES, PAYMENT_STATUS_LABELS } from "@/lib/tracking/payment";
 import { SERVICE_LEVELS, SERVICE_LEVEL_LABELS } from "@/lib/tracking/shipment";
 
 /** Declared here: a "use server" module may only export async functions. */
@@ -354,6 +355,29 @@ export function ShipmentForm({ shipment }: { shipment?: ShipmentRow }) {
                 placeholder="-80.1918"
                 defaultValue={num(shipment?.destination_longitude)}
               />
+            )}
+          </Field>
+
+          <Field
+            id="paymentStatus"
+            label="Recipient payment flow"
+            hint="Setting this to awaiting an email makes the tracking page ask the recipient for one."
+            error={error("paymentStatus")}
+            className="sm:col-span-2"
+          >
+            {(props) => (
+              <Select
+                {...props}
+                name="paymentStatus"
+                defaultValue={shipment?.payment_status ?? ""}
+              >
+                <option value="">Not in the payment flow</option>
+                {PAYMENT_STATUSES.map((status) => (
+                  <option key={status} value={status}>
+                    {PAYMENT_STATUS_LABELS[status]}
+                  </option>
+                ))}
+              </Select>
             )}
           </Field>
         </div>
