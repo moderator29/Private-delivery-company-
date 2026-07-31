@@ -351,6 +351,45 @@ describe("parseTrackedShipment", () => {
     expect(shipment.progress.at(-1)!.locationLabel).toBe("Miami, USA");
   });
 
+  it("carries the recipient payment state through to the view model", () => {
+    const awaiting = parseTrackedShipment(
+      payload({ payment_status: "awaiting_recipient_email" }),
+    )!;
+    expect(awaiting.paymentStatus).toBe("awaiting_recipient_email");
+    expect(awaiting.recipientEmailSubmittedAt).toBeNull();
+
+    const received = parseTrackedShipment(
+      payload({
+        payment_status: "email_received",
+        recipient_email_submitted_at: "2026-08-02T09:00:00+00:00",
+      }),
+    )!;
+    expect(received.paymentStatus).toBe("email_received");
+    expect(received.recipientEmailSubmittedAt).toBe("2026-08-02T09:00:00+00:00");
+  });
+
+  it("reads a missing or unknown payment state as not being in the flow", () => {
+    // A payload from a database that predates migration 0011 must still parse
+    // rather than blanking the whole tracking page.
+    expect(parseTrackedShipment(payload())!.paymentStatus).toBeNull();
+    expect(parseTrackedShipment(payload({ payment_status: null }))!.paymentStatus).toBeNull();
+    expect(
+      parseTrackedShipment(payload({ payment_status: "invoice_overdue" }))!.paymentStatus,
+    ).toBeNull();
+  });
+
+  it("never publishes the address the recipient submitted", () => {
+    // track_shipment() does not return it, and nothing in the view model has
+    // anywhere to put it if it ever did.
+    const shipment = parseTrackedShipment(
+      payload({
+        payment_status: "email_received",
+        recipient_contact_email: "recipient@example.com",
+      }),
+    )!;
+    expect(JSON.stringify(shipment)).not.toContain("recipient@example.com");
+  });
+
   it("passes the estimate fields through untouched for the view to format", () => {
     const shipment = parseTrackedShipment(payload())!;
     expect(shipment.estimatedDeliveryDate).toBe("2026-08-06");

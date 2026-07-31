@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { PermissionDeniedError, requireWriteAccess } from "@/lib/data/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { PAYMENT_STATUSES, type PaymentStatus } from "@/lib/tracking/payment";
 import { SERVICE_LEVELS } from "@/lib/tracking/shipment";
 import { SHIPMENT_STATUSES } from "@/lib/tracking/status";
 import { generateTrackingId } from "@/lib/tracking/tracking-id";
@@ -42,6 +43,19 @@ const optionalCoordinate = (limit: number) =>
       message: `Must be between -${limit} and ${limit}, or blank.`,
     });
 
+/**
+ * Blank means "not in the recipient payment flow", which is the normal case and
+ * is stored as NULL rather than as an empty string the check constraint would
+ * reject.
+ */
+const paymentStatus = z
+  .string()
+  .trim()
+  .refine((value) => value === "" || (PAYMENT_STATUSES as readonly string[]).includes(value), {
+    message: "Choose a payment state from the list.",
+  })
+  .transform((value) => (value === "" ? null : (value as PaymentStatus)));
+
 const countryCode = z
   .string()
   .trim()
@@ -74,6 +88,8 @@ const shipmentSchema = z.object({
   destinationCountry: countryCode,
   destinationLatitude: optionalCoordinate(90),
   destinationLongitude: optionalCoordinate(180),
+
+  paymentStatus,
 
   packageType: optionalText,
   pieceCount: z
@@ -117,6 +133,7 @@ function readShipmentForm(formData: FormData) {
     destinationCountry: read("destinationCountry") || "US",
     destinationLatitude: read("destinationLatitude"),
     destinationLongitude: read("destinationLongitude"),
+    paymentStatus: read("paymentStatus"),
     packageType: read("packageType"),
     pieceCount: read("pieceCount"),
     weightKg: read("weightKg"),
@@ -163,6 +180,10 @@ function toRow(input: z.infer<typeof shipmentSchema>) {
     destination_country: input.destinationCountry,
     destination_latitude: input.destinationLatitude,
     destination_longitude: input.destinationLongitude,
+    // Deliberately not written here: recipient_contact_email and
+    // recipient_email_submitted_at. Those record what the recipient did, and
+    // only submit_recipient_email() writes them.
+    payment_status: input.paymentStatus,
     package_type: input.packageType,
     piece_count: input.pieceCount,
     weight_kg: input.weightKg,

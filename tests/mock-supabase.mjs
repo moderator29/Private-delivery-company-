@@ -32,6 +32,8 @@ import { createServer } from "node:http";
 export const TRACKING_IN_TRANSIT = "STX984756532US";
 export const TRACKING_DELIVERED = "STDE11VERED1US";
 export const TRACKING_DELAYED = "STDE1AYED123US";
+/** Held, and waiting for the recipient to supply an email address. */
+export const TRACKING_AWAITING_EMAIL = "STEMA1123456US";
 /** Well formed, deliberately absent from the fixtures. */
 export const TRACKING_UNKNOWN = "STZZ999999ZZUS";
 
@@ -110,6 +112,10 @@ const IN_TRANSIT = {
     width_cm: null,
     height_cm: null,
   },
+  // Null on every shipment outside the recipient payment flow, which is nearly
+  // all of them.
+  payment_status: null,
+  recipient_email_submitted_at: null,
   created_at: "2026-07-30T04:30:00+00:00",
   updated_at: "2026-08-01T06:45:00+00:00",
   events: [
@@ -279,10 +285,51 @@ const DELAYED = {
   ],
 };
 
+/**
+ * A shipment held while it waits for the recipient's email address.
+ *
+ * Kept mutable on purpose: submit_recipient_email() below rewrites this object
+ * the way the real function rewrites the row, so the browser test can assert
+ * that the timeline picks the new event up on the revalidation that follows,
+ * rather than only that the form said something reassuring.
+ */
+const AWAITING_EMAIL = {
+  ...IN_TRANSIT,
+  tracking_id: TRACKING_AWAITING_EMAIL,
+  status: "awaiting_verification",
+  recipient: {
+    name: "Ines Duarte",
+    company: null,
+    address_line1: "440 Biscayne Boulevard",
+    address_line2: null,
+    city: "Miami",
+    state: "Florida",
+    postal_code: "33132",
+    country: "US",
+  },
+  payment_status: "awaiting_recipient_email",
+  recipient_email_submitted_at: null,
+  events: [
+    event(
+      "label_created",
+      "Shipment Information Received",
+      "Shipment details received and the waybill was created.",
+      "2026-07-30T04:30:00+00:00",
+    ),
+    event(
+      "in_transit",
+      "In Transit",
+      "Departed Dubai on the linehaul to the destination country.",
+      "2026-08-01T06:45:00+00:00",
+    ),
+  ],
+};
+
 const SHIPMENTS = new Map([
   [TRACKING_IN_TRANSIT, IN_TRANSIT],
   [TRACKING_DELIVERED, DELIVERED],
   [TRACKING_DELAYED, DELAYED],
+  [TRACKING_AWAITING_EMAIL, AWAITING_EMAIL],
 ]);
 
 /* ------------------------------------------------------------------------- */
@@ -318,6 +365,49 @@ const RPC = {
   },
 
   submit_shipment_rating() {
+    return { status: 200, payload: { ok: true } };
+  },
+
+  /**
+   * Mirrors public.submit_recipient_email(): the same verdict vocabulary, the
+   * same preconditions, the same normalisation, and the same side effects on
+   * the shipment it accepts.
+   */
+  submit_recipient_email(body) {
+    const email = String(body.p_email ?? "")
+      .trim()
+      .toLowerCase();
+
+    if (email === "" || email.length > 254 || !/^[^@\s]+@[^@\s.]+\.[^@\s]+$/.test(email)) {
+      return { status: 200, payload: { ok: false, reason: "invalid_email" } };
+    }
+
+    const shipment = SHIPMENTS.get(normalizeTrackingId(body.p_tracking_id));
+    if (!shipment) {
+      return { status: 200, payload: { ok: false, reason: "not_found" } };
+    }
+    if (shipment.payment_status === "email_received") {
+      return { status: 200, payload: { ok: false, reason: "already_submitted" } };
+    }
+    if (shipment.payment_status !== "awaiting_recipient_email") {
+      return { status: 200, payload: { ok: false, reason: "not_requested" } };
+    }
+
+    const now = new Date().toISOString();
+    shipment.payment_status = "email_received";
+    shipment.recipient_email_submitted_at = now;
+    shipment.updated_at = now;
+    shipment.events = [
+      ...shipment.events,
+      event(
+        "awaiting_verification",
+        "Recipient Email Received",
+        "The recipient securely submitted an email address. Payment documentation is now being prepared.",
+        now,
+        MIAMI,
+      ),
+    ];
+
     return { status: 200, payload: { ok: true } };
   },
 
@@ -612,6 +702,12 @@ const SHIPMENT_DEFAULTS = {
   recipient_company: null,
   recipient_email: null,
   recipient_phone: null,
+  recipient_contact_email: null,
+  recipient_email_submitted_at: null,
+  payment_status: null,
+  payment_currency: null,
+  total_amount_due: null,
+  payment_reference: null,
   estimated_delivery_window: "By 8:00 PM",
   internal_notes: null,
   current_location_label: "Dubai",
@@ -695,6 +791,22 @@ const SHIPMENT_ROWS = [
       "Held by weather at the transit hub. Rebooking on the next linehaul.",
     created_at: ago(53),
     updated_at: ago(11),
+  }),
+  shipment({
+    tracking_id: TRACKING_AWAITING_EMAIL,
+    status: "awaiting_verification",
+    ...ROUTES.miami,
+    destination_postal_code: "33132",
+    destination_address_line1: "440 Biscayne Boulevard",
+    recipient_name: "Ines Duarte",
+    payment_status: "awaiting_recipient_email",
+    payment_currency: "USD",
+    total_amount_due: 42,
+    estimated_delivery_date: dueIn(7),
+    shipped_at: ago(30),
+    internal_notes: "Held pending recipient contact details.",
+    created_at: ago(56),
+    updated_at: ago(5),
   }),
   shipment({
     tracking_id: "ST4471902238GB",

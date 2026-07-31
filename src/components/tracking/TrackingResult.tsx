@@ -4,6 +4,7 @@ import { CopyButton } from "@/components/tracking/CopyButton";
 import { ParcelIllustration } from "@/components/tracking/ParcelIllustration";
 import { ProgressTimeline } from "@/components/tracking/ProgressTimeline";
 import { RatingCard } from "@/components/tracking/RatingCard";
+import { RecipientEmailCard } from "@/components/tracking/RecipientEmailCard";
 import { RouteMap } from "@/components/tracking/RouteMap";
 import { Alert } from "@/components/ui/Alert";
 import { Flag } from "@/components/ui/Flag";
@@ -90,6 +91,16 @@ export function TrackingResult({
           Our operations team is working on it. Contact support with your
           tracking number if you need an update sooner.
         </Alert>
+      ) : null}
+
+      {/* Directly under the status, because on a shipment that is asking for an
+          address this is the one thing the page wants the visitor to do. */}
+      {shipment.paymentStatus === "awaiting_recipient_email" ||
+      shipment.paymentStatus === "email_received" ? (
+        <RecipientEmailCard
+          trackingId={shipment.trackingId}
+          submitted={shipment.paymentStatus === "email_received"}
+        />
       ) : null}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.62fr)_minmax(0,1fr)] lg:items-start">

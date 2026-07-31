@@ -89,6 +89,9 @@ It returns:
 - `current_location_label`, `estimated_delivery_date`,
   `estimated_delivery_window`, `shipped_at`, `delivered_at`
 - `package`: type, piece count, `weight_kg` and centimetre dimensions
+- `payment_status` and `recipient_email_submitted_at`, which are what tell the
+  tracking page whether to ask the recipient for an email address or to confirm
+  one arrived
 - `created_at`, `updated_at`
 - `events`: for each event with `is_public = true`, its status, title,
   description, facility label, city, state, country, coordinates and
@@ -97,7 +100,11 @@ It returns:
 It withholds:
 
 - **Phone numbers.** `sender_phone` and `recipient_phone` are never returned.
-- **Email addresses.** `sender_email` and `recipient_email` are never returned.
+- **Email addresses.** `sender_email`, `recipient_email` and
+  `recipient_contact_email` are never returned. The last of those is the address
+  a recipient submits from the tracking page; the page confirms that it arrived
+  and never displays it, so a forwarded tracking link cannot be used to read
+  someone's mailbox back.
 - **`internal_notes`.** Operations commentary stays in the admin area.
 - **`created_by`** and the internal row `id`. Nothing links a public payload back
   to a staff account or to a primary key.
@@ -191,16 +198,17 @@ back into a list of visitor addresses.
 
 ## Every function anon can call
 
-Five, all `SECURITY DEFINER`, all explicitly revoked from `public` and then
+Six, all `SECURITY DEFINER`, all explicitly revoked from `public` and then
 granted to `anon`:
 
 | Function                                        | Migration              | What it does                                      |
 | ----------------------------------------------- | ---------------------- | ------------------------------------------------- |
-| `track_shipment(text)`                          | 0006 (created in 0003) | Public tracking lookup                            |
+| `track_shipment(text)`                          | 0011 (created in 0003) | Public tracking lookup                            |
 | `submit_support_request(...)`                   | 0005                   | Contact form intake, write only                   |
 | `submit_shipment_rating(text, int, text, text)` | 0007                   | One rating per delivered shipment                 |
 | `shipment_rating_state(text)`                   | 0007                   | Whether the rating form should appear             |
 | `service_performance()`                         | 0007                   | Aggregate counts and averages for the public site |
+| `submit_recipient_email(text, text)`            | 0011                   | One recipient email address per shipment          |
 
 Everything else is closed. Migration `0004_harden_function_exposure.sql` exists
 because revoking from `anon` alone did not actually close anything: Postgres
@@ -220,6 +228,22 @@ avoid recursing into itself. Calling one reveals only the caller's own role.
 caller: the shipment must exist, must not be archived, must be `delivered`, and
 must not already have a rating. `shipment_ratings` carries a unique constraint on
 `shipment_id` underneath that.
+
+`submit_recipient_email()` does the same for the address a recipient supplies:
+the shipment must exist, must not be archived, must carry
+`payment_status = 'awaiting_recipient_email'`, and must not already have
+answered. That last pair of conditions is what stops the function being a way to
+write an arbitrary address onto any shipment whose number someone holds, and
+what makes a repeated submission a no-op rather than a second database write and
+a second timeline event. It selects the row `for update`, so two submissions
+racing each other resolve to one write and one `already_submitted`.
+
+Its verdicts are deliberately coarse where being precise would leak: `not_found`
+and `not_requested` are worded identically to the visitor, because telling
+someone which of the two applies would confirm whether a given shipment is
+waiting on a payment.
+
+
 
 ---
 
@@ -251,7 +275,8 @@ green run. See the launch checklist.
 
 **Rate limiting is per instance and in memory.** `src/lib/rate-limit.ts` holds a
 fixed-window counter in a `Map` in one server process. Public tracking is
-30 lookups a minute, the contact form 5 an hour, ratings 10 an hour, and sign-in
+30 lookups a minute, the contact form 5 an hour, ratings 10 an hour, recipient
+email submissions 10 an hour, and sign-in
 8 attempts in ten minutes. Behind multiple instances, or on a serverless platform
 that spawns isolates, each instance keeps its own count and the effective limit
 multiplies by the instance count. It stops casual scraping and form spam from one
