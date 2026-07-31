@@ -30,6 +30,12 @@ function environment(mockPort) {
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
       "sb_publishable_e2e_mock_key_not_a_secret",
     NEXT_PUBLIC_SITE_URL: `http://127.0.0.1:${APP_PORT}`,
+    // The browser suite drives hundreds of requests from one address in seconds,
+    // all sharing a single rate-limit bucket because there is no forwarding
+    // header in front of `next start`. That is exactly the traffic the public
+    // rate limiter is built to stop, so the harness turns it off explicitly.
+    // Nothing outside tests sets this; production leaves the limiter on.
+    E2E_RATE_LIMIT_DISABLED: "1",
   };
 }
 

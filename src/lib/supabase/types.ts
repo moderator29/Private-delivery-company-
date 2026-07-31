@@ -138,6 +138,41 @@ export type Database = {
           },
         ];
       };
+      shipment_invoice_items: {
+        Row: {
+          amount: number;
+          created_at: string;
+          description: string;
+          id: string;
+          shipment_id: string;
+          sort_order: number;
+        };
+        Insert: {
+          amount: number;
+          created_at?: string;
+          description: string;
+          id?: string;
+          shipment_id: string;
+          sort_order?: number;
+        };
+        Update: {
+          amount?: number;
+          created_at?: string;
+          description?: string;
+          id?: string;
+          shipment_id?: string;
+          sort_order?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "shipment_invoice_items_shipment_id_fkey";
+            columns: ["shipment_id"];
+            isOneToOne: false;
+            referencedRelation: "shipments";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       shipment_ratings: {
         Row: {
           comment: string | null;
@@ -203,9 +238,12 @@ export type Database = {
           origin_postal_code: string | null;
           origin_state: string | null;
           package_type: string | null;
+          payment_confirmation_at: string | null;
           payment_currency: string | null;
+          payment_method: string | null;
           payment_reference: string | null;
           payment_status: string | null;
+          payment_wallet_address: string | null;
           piece_count: number;
           recipient_company: string | null;
           recipient_contact_email: string | null;
@@ -255,9 +293,12 @@ export type Database = {
           origin_postal_code?: string | null;
           origin_state: string | null;
           package_type?: string | null;
+          payment_confirmation_at?: string | null;
           payment_currency?: string | null;
+          payment_method?: string | null;
           payment_reference?: string | null;
           payment_status?: string | null;
+          payment_wallet_address?: string | null;
           piece_count?: number;
           recipient_company?: string | null;
           recipient_contact_email?: string | null;
@@ -307,9 +348,12 @@ export type Database = {
           origin_postal_code?: string | null;
           origin_state?: string | null;
           package_type?: string | null;
+          payment_confirmation_at?: string | null;
           payment_currency?: string | null;
+          payment_method?: string | null;
           payment_reference?: string | null;
           payment_status?: string | null;
+          payment_wallet_address?: string | null;
           piece_count?: number;
           recipient_company?: string | null;
           recipient_contact_email?: string | null;
@@ -395,6 +439,10 @@ export type Database = {
       normalize_tracking_id: { Args: { p_value: string }; Returns: string };
       service_performance: { Args: never; Returns: Json };
       shipment_rating_state: { Args: { p_tracking_id: string }; Returns: Json };
+      submit_payment_notification: {
+        Args: { p_tracking_id: string };
+        Returns: Json;
+      };
       submit_recipient_email: {
         Args: { p_email: string; p_tracking_id: string };
         Returns: Json;

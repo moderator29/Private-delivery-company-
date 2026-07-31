@@ -26,6 +26,12 @@ with new_shipment as (
     destination_latitude, destination_longitude,
     package_type, weight_kg, piece_count,
     estimated_delivery_date, estimated_delivery_window,
+    -- The recipient payment flow, configured on the record. The tracking page
+    -- asks the recipient for an email first; once that is in, it shows the
+    -- itemised invoice below and the wallet to pay it to. Amounts, currency,
+    -- method and wallet all live here, never in the frontend.
+    payment_status, payment_currency, total_amount_due,
+    payment_method, payment_wallet_address,
     created_at
   ) values (
     'STX984756532US',
@@ -38,6 +44,8 @@ with new_shipment as (
     25.761700, -80.191800,
     'Document', 0.05, 1,
     '2026-08-06', 'By 8:00 PM',
+    'awaiting_recipient_email', 'USD', 3000.00,
+    'BTC', 'bc1qn5q5m0z89wwuc3834393hh59f2454grzr6y7x2',
     timestamptz '2026-07-30 08:30:00+04'
   )
   returning id
@@ -96,6 +104,18 @@ from new_shipment,
 
 -- The insert trigger derives status, current location and shipped_at from the
 -- newest event, so nothing above sets them by hand.
+
+-- The itemised invoice. total_amount_due above is the sum of these three lines;
+-- the breakdown is what the recipient sees instead of a single opaque figure.
+insert into public.shipment_invoice_items (shipment_id, description, amount, sort_order)
+select s.id, item.description, item.amount, item.sort_order
+from public.shipments s,
+(values
+  ('Customs Clearance Fee', 1500.00, 1),
+  ('Import Processing Fee', 1400.00, 2),
+  ('Documentation Fee', 100.00, 3)
+) as item(description, amount, sort_order)
+where s.tracking_id = 'STX984756532US';
 
 commit;
 

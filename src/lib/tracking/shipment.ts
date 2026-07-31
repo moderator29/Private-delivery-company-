@@ -11,7 +11,14 @@
 import { z } from "zod";
 
 import { countryName, countryShortName } from "@/lib/countries";
-import { parsePaymentStatus, type PaymentStatus } from "./payment";
+import {
+  parsePaymentMethod,
+  parsePaymentStatus,
+  type Invoice,
+  type InvoiceLineItem,
+  type PaymentMethod,
+  type PaymentStatus,
+} from "./payment";
 import {
   SHIPMENT_STATUSES,
   type ShipmentStatus,
@@ -114,6 +121,25 @@ export const trackShipmentPayloadSchema = z.object({
    */
   payment_status: z.unknown().optional(),
   recipient_email_submitted_at: nullableText,
+  /**
+   * Invoice and pay-to details, all optional so a payload from a database that
+   * predates migration 0012 still parses. Absent means the shipment carries no
+   * invoice, which is the normal case.
+   */
+  payment_method: z.unknown().optional(),
+  payment_wallet_address: nullableText,
+  payment_currency: nullableText,
+  total_amount_due: numericLike,
+  payment_confirmation_at: nullableText,
+  invoice_items: z
+    .array(
+      z.object({
+        description: z.string(),
+        amount: numericLike,
+      }),
+    )
+    .optional()
+    .default([]),
   created_at: z.string(),
   updated_at: z.string(),
   events: z.array(eventSchema),
@@ -187,6 +213,14 @@ export interface TrackedShipment {
   paymentStatus: PaymentStatus | null;
   /** When the recipient submitted their address, if they have. */
   recipientEmailSubmittedAt: string | null;
+  /** The itemised invoice, or null when the shipment carries no invoice. */
+  invoice: Invoice | null;
+  /** How the recipient is asked to pay, when an invoice is present. */
+  paymentMethod: PaymentMethod | null;
+  /** The wallet address to pay to, when configured. */
+  paymentWalletAddress: string | null;
+  /** When the recipient reported sending payment, if they have. A claim, not a receipt. */
+  paymentConfirmationAt: string | null;
   createdAt: string;
   updatedAt: string;
   events: TrackedEvent[];
@@ -307,6 +341,36 @@ function daysUntilCalendarDate(from: string, calendarDate: string): number | nul
   return Math.round((end - startDay) / 86_400_000);
 }
 
+/**
+ * Assembles the invoice from the payload, or null when there is nothing to bill.
+ *
+ * An invoice exists when there is an amount owed or at least one line item. The
+ * total comes from the record's total_amount_due; it is not recomputed from the
+ * items, so the figure the page shows is the figure operations set. When only a
+ * total is on record and no line items, the total stands alone as one line.
+ */
+function toInvoice(payload: TrackShipmentPayload): Invoice | null {
+  const items: InvoiceLineItem[] = (payload.invoice_items ?? [])
+    .map((item) => ({
+      description: item.description.trim(),
+      amount: item.amount ?? 0,
+    }))
+    .filter((item) => item.description.length > 0);
+
+  const total = payload.total_amount_due;
+  const hasInvoice = items.length > 0 || (total !== null && total !== undefined);
+  if (!hasInvoice) return null;
+
+  const currency = (payload.payment_currency ?? "USD").trim().toUpperCase() || "USD";
+  const itemsTotal = items.reduce((sum, item) => sum + item.amount, 0);
+
+  return {
+    currency,
+    items,
+    total: total ?? itemsTotal,
+  };
+}
+
 export function toTrackedShipment(payload: TrackShipmentPayload): TrackedShipment {
   const events: TrackedEvent[] = payload.events.map((event) => ({
     status: event.status,
@@ -362,6 +426,10 @@ export function toTrackedShipment(payload: TrackShipmentPayload): TrackedShipmen
     },
     paymentStatus: parsePaymentStatus(payload.payment_status),
     recipientEmailSubmittedAt: payload.recipient_email_submitted_at,
+    invoice: toInvoice(payload),
+    paymentMethod: parsePaymentMethod(payload.payment_method),
+    paymentWalletAddress: payload.payment_wallet_address,
+    paymentConfirmationAt: payload.payment_confirmation_at,
     createdAt: payload.created_at,
     updatedAt: payload.updated_at,
     events,

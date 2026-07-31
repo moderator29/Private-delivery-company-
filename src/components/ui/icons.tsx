@@ -381,6 +381,34 @@ export function ScaleIcon(props: IconProps) {
   );
 }
 
+export function ReceiptIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M5.5 3.5h13v17l-2.2-1.4-2.1 1.4-2.2-1.4-2.2 1.4-2.1-1.4L5.5 20.5v-17Z" />
+      <path d="M9 8h6M9 11.5h6M9 15h4" />
+    </Icon>
+  );
+}
+
+export function BitcoinIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M9.8 7.5v9M11.8 7.5v9M8.7 7.5h4.2a2.25 2.25 0 0 1 0 4.5H8.7h4.5a2.25 2.25 0 0 1 0 4.5H8.7M10.4 6v1.5M10.4 16.5V18M12.4 6v1.5M12.4 16.5V18" />
+    </Icon>
+  );
+}
+
+export function WalletIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M3.5 7.5A1.5 1.5 0 0 1 5 6h12.5a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5v-9Z" />
+      <path d="M15.5 11.5h3.5v3h-3.5a1.5 1.5 0 0 1 0-3Z" />
+      <path d="M3.5 8h13.5" />
+    </Icon>
+  );
+}
+
 export function CustomsIcon(props: IconProps) {
   return (
     <Icon {...props}>

@@ -273,6 +273,22 @@ export async function getShipmentEvents(
   return data ?? [];
 }
 
+export type ShipmentInvoiceItemRow = Tables<"shipment_invoice_items">;
+
+export async function getShipmentInvoiceItems(
+  shipmentId: string,
+): Promise<ShipmentInvoiceItemRow[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("shipment_invoice_items")
+    .select("*")
+    .eq("shipment_id", shipmentId)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+
 export interface RecentActivityEntry {
   id: string;
   action: string;

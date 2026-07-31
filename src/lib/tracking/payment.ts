@@ -16,6 +16,7 @@ export const PAYMENT_STATUSES = [
   "not_required",
   "awaiting_recipient_email",
   "email_received",
+  "reviewing_payment",
 ] as const;
 
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
@@ -25,12 +26,68 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   not_required: "No payment needed",
   awaiting_recipient_email: "Awaiting the recipient's email address",
   email_received: "Email address received",
+  reviewing_payment: "Payment reported, under review",
 };
 
 export function parsePaymentStatus(value: unknown): PaymentStatus | null {
   return typeof value === "string" && (PAYMENT_STATUSES as readonly string[]).includes(value)
     ? (value as PaymentStatus)
     : null;
+}
+
+/**
+ * Payment methods a shipment can be configured to collect. A closed vocabulary
+ * mirroring the shipments_payment_method_known check constraint; BTC is the only
+ * one today. Anything the schema does not know parses to null.
+ */
+export const PAYMENT_METHODS = ["BTC"] as const;
+
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
+/** How each method is named to the recipient on the tracking page. */
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  BTC: "Bitcoin (BTC)",
+};
+
+export function parsePaymentMethod(value: unknown): PaymentMethod | null {
+  return typeof value === "string" && (PAYMENT_METHODS as readonly string[]).includes(value)
+    ? (value as PaymentMethod)
+    : null;
+}
+
+/** One charge on an invoice. */
+export interface InvoiceLineItem {
+  description: string;
+  amount: number;
+}
+
+/**
+ * The invoice a recipient sees. Assembled by the parsing layer from the fields
+ * public.track_shipment() returns, so the page never computes or hardcodes an
+ * amount. Null when the shipment carries no invoice.
+ */
+export interface Invoice {
+  currency: string;
+  items: InvoiceLineItem[];
+  /** The amount owed, from the record. Not recomputed from the line items. */
+  total: number;
+}
+
+/**
+ * Formats a money amount the way the invoice reads it: the currency code, a
+ * space, then the grouped amount, e.g. "USD 1,500". Whole amounts drop the
+ * decimals; a fractional amount keeps two places so "USD 12.50" is not shown as
+ * "USD 12.5".
+ */
+export function formatMoney(currency: string, amount: number): string {
+  const code = (currency || "").trim().toUpperCase();
+  const safe = Number.isFinite(amount) ? amount : 0;
+  const hasFraction = Math.round(safe * 100) % 100 !== 0;
+  const grouped = new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: hasFraction ? 2 : 0,
+    maximumFractionDigits: 2,
+  }).format(safe);
+  return code ? `${code} ${grouped}` : grouped;
 }
 
 /**
