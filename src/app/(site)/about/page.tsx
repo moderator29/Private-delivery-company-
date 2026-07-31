@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { PageHero, Prose } from "@/components/layout/PageHero";
 import { PerformancePanel } from "@/components/home/PerformancePanel";
+import { getServicePerformance } from "@/lib/data/ratings";
 import { ButtonLink } from "@/components/ui/Button";
 import { Reveal } from "@/components/ui/Motion";
 import { Card, Container, SectionHeading } from "@/components/ui/Surface";
@@ -85,7 +86,10 @@ const NETWORK = [
   },
 ];
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  // The performance section renders only when there is real data behind it.
+  const performance = await getServicePerformance();
+
   return (
     <>
       <PageHero
@@ -158,19 +162,22 @@ export default function AboutPage() {
         </div>
       </Container>
 
-      {/* Live performance, computed from real shipments. */}
-      <section className="border-y border-ink-200 bg-ink-50 py-16 sm:py-20">
-        <Container>
-          <SectionHeading
-            eyebrow="Performance"
-            title="Measured, not claimed"
-            description="These figures are computed from the shipments in our own operational database at the moment you loaded this page. Nothing here is a marketing estimate, and when there is not enough data to publish a number, we say so."
-          />
-          <div className="mt-10">
-            <PerformancePanel />
-          </div>
-        </Container>
-      </section>
+      {/* Live performance, computed from real shipments. Shown only when there
+          is real data behind it. */}
+      {!performance.isEmpty ? (
+        <section className="border-y border-ink-200 bg-ink-50 py-16 sm:py-20">
+          <Container>
+            <SectionHeading
+              eyebrow="Performance"
+              title="Measured, not claimed"
+              description="These figures are computed from the shipments in our own operational database at the moment you loaded this page. Nothing here is a marketing estimate, and when there is not enough data to publish a number, we say so."
+            />
+            <div className="mt-10">
+              <PerformancePanel />
+            </div>
+          </Container>
+        </section>
+      ) : null}
 
       {/* Values. */}
       <Container className="py-16 sm:py-20">

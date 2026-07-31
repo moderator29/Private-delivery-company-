@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { headers } from "next/headers";
 
 import { rateLimit, requestIdentifier } from "@/lib/rate-limit";
@@ -112,7 +113,9 @@ export interface ServicePerformance {
  * Nothing here is estimated or seeded. When no deliveries have completed yet,
  * isEmpty is true and the UI says so rather than showing a flattering zero.
  */
-export async function getServicePerformance(): Promise<ServicePerformance> {
+export const getServicePerformance = cache(_getServicePerformance);
+
+async function _getServicePerformance(): Promise<ServicePerformance> {
   const empty: ServicePerformance = {
     deliveredCount: 0,
     onTimePercent: null,

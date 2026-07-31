@@ -1,4 +1,3 @@
-import { Alert } from "@/components/ui/Alert";
 import { Card } from "@/components/ui/Surface";
 import { CountUp, Reveal } from "@/components/ui/Motion";
 import { StarIcon } from "@/components/ui/icons";
@@ -10,21 +9,15 @@ import { getServicePerformance } from "@/lib/data/ratings";
  *
  * Every number is computed by the database from real shipment and rating rows.
  * There are no seeded figures and no fallbacks that invent a flattering value:
- * when a metric has no data behind it, the tile says so. That is the whole point
- * of the panel, so it is worth stating plainly in the UI too.
+ * when a metric has no data behind it, the tile says so.
+ *
+ * Until there is any completed, rated delivery to report, the panel renders
+ * nothing at all rather than an empty-state placeholder.
  */
 export async function PerformancePanel() {
   const performance = await getServicePerformance();
 
-  if (performance.isEmpty) {
-    return (
-      <Alert tone="info" title="No completed deliveries yet">
-        Performance figures appear here once shipments have been delivered and customers have rated
-        them. We publish these numbers from our operational database rather than estimating them, so
-        this panel stays empty until there is something real to show.
-      </Alert>
-    );
-  }
+  if (performance.isEmpty) return null;
 
   const stars = performance.averageStars;
 

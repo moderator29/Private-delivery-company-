@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { PageHero, Prose } from "@/components/layout/PageHero";
 import { PerformancePanel } from "@/components/home/PerformancePanel";
+import { getServicePerformance } from "@/lib/data/ratings";
 import { ButtonLink } from "@/components/ui/Button";
 import { Reveal } from "@/components/ui/Motion";
 import { Card, Container, SectionHeading } from "@/components/ui/Surface";
@@ -104,7 +105,9 @@ const ONBOARDING = [
   },
 ];
 
-export default function BusinessPage() {
+export default async function BusinessPage() {
+  const performance = await getServicePerformance();
+
   return (
     <>
       <PageHero
@@ -219,9 +222,11 @@ export default function BusinessPage() {
             title="Judge us on the numbers we actually have"
             description="Computed live from our operational database when this page loads. If a figure is not there yet, it is because the deliveries behind it have not happened."
           />
-          <div className="mt-10">
-            <PerformancePanel />
-          </div>
+          {!performance.isEmpty ? (
+            <div className="mt-10">
+              <PerformancePanel />
+            </div>
+          ) : null}
 
           <Card className="mt-10 p-6">
             <h3 className="flex items-center gap-2 text-base font-semibold text-ink-900">

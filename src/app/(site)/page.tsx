@@ -11,6 +11,7 @@ import {
 import { PerformancePanel } from "@/components/home/PerformancePanel";
 import { QuickActions } from "@/components/home/QuickActions";
 import { Container, SectionHeading } from "@/components/ui/Surface";
+import { getServicePerformance } from "@/lib/data/ratings";
 import { absoluteUrl } from "@/lib/env";
 
 /**
@@ -27,7 +28,11 @@ export const metadata: Metadata = {
   alternates: { canonical: absoluteUrl("/") },
 };
 
-export default function HomePage() {
+export default async function HomePage() {
+  // The performance section is shown only once there is real data behind it,
+  // so the page does not carry an empty heading over nothing.
+  const performance = await getServicePerformance();
+
   return (
     <>
       <Hero />
@@ -35,19 +40,21 @@ export default function HomePage() {
       <ValueProps />
       <ProcessSteps />
 
-      <section className="py-16 sm:py-20">
-        <Container>
-          <SectionHeading
-            eyebrow="Our record"
-            title="Numbers from our own database, not a brochure"
-            description="Computed live from completed shipments and customer ratings each time this page is served. When there is not enough data behind a figure, we say so instead of publishing one."
-            align="center"
-          />
-          <div className="mt-12">
-            <PerformancePanel />
-          </div>
-        </Container>
-      </section>
+      {!performance.isEmpty ? (
+        <section className="py-16 sm:py-20">
+          <Container>
+            <SectionHeading
+              eyebrow="Our record"
+              title="Numbers from our own database, not a brochure"
+              description="Computed live from completed shipments and customer ratings each time this page is served. When there is not enough data behind a figure, we say so instead of publishing one."
+              align="center"
+            />
+            <div className="mt-12">
+              <PerformancePanel />
+            </div>
+          </Container>
+        </section>
+      ) : null}
 
       <EditorialSection />
       <ServicePreview />
