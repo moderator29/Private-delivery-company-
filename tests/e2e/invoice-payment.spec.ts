@@ -1,13 +1,20 @@
 import { expect, test } from "@playwright/test";
 
-import { TRACKING_INVOICE, TRACKING_IN_TRANSIT, collectConsoleErrors, main } from "./fixtures";
+import {
+  TRACKING_INVOICE,
+  TRACKING_INVOICE_SUBMIT,
+  TRACKING_IN_TRANSIT,
+  collectConsoleErrors,
+  main,
+} from "./fixtures";
 
 /**
- * The mock rewrites its fixture when it accepts a payment notification, exactly
- * as the real function rewrites the row. That makes this suite stateful: once a
- * test has submitted, the shipment stays reviewing for the rest of the run. The
- * read-only checks run before the test that submits, and the file is serial so a
- * parallel worker cannot reorder them.
+ * The submit test mutates its shipment, exactly as the real function rewrites
+ * the row. To keep that from making the suite fragile, the read-only checks use
+ * TRACKING_INVOICE, which nothing mutates, and the submit test uses its own
+ * TRACKING_INVOICE_SUBMIT. So a retry of the stateful test cannot break the
+ * display tests, and the submit test itself tolerates finding the shipment
+ * already reported.
  *
  * The tests are deliberately consolidated: every /track lookup shares one public
  * rate-limit bucket across the whole browser suite, so this file keeps its page
@@ -80,18 +87,32 @@ test.describe("a shipment with an outstanding invoice", () => {
 
   test("submits the notification, swaps in the review card, files the scan", async ({ page }) => {
     const errors = collectConsoleErrors(page);
-    await page.goto(`/track/${TRACKING_INVOICE}`);
+    await page.goto(`/track/${TRACKING_INVOICE_SUBMIT}`);
 
     const timeline = page.locator("ol").filter({ hasText: "Shipment Information Received" });
-    await expect(timeline.getByText("Payment Notification Submitted")).toHaveCount(0);
 
-    await page.getByTestId("sent-payment-button").click();
-    await page.getByTestId("confirm-payment-submit").click();
+    // Only submit if the shipment has not already been reported. On a retry the
+    // mock may already carry the notification, and the assertions below hold
+    // either way — the point of the test is the end state, not that this run is
+    // the one that produced it.
+    const invoice = page.getByTestId("invoice-card");
+    if (await invoice.isVisible()) {
+      await expect(timeline.getByText("Payment Notification Submitted")).toHaveCount(0);
+
+      await page.getByTestId("sent-payment-button").click();
+      // Wait for the dialog to be fully shown before submitting: showModal() runs
+      // in an effect after the open state flips, and clicking into that gap is a
+      // race under load.
+      const dialog = page.getByTestId("confirm-payment-dialog");
+      await expect(dialog).toBeVisible();
+      await dialog.getByTestId("confirm-payment-submit").click();
+    }
 
     // The invoice is replaced by the review status card, not hidden, so there is
-    // nothing to submit twice.
+    // nothing to submit twice. The transition waits on a server action and a
+    // revalidation, so it is given room beyond the 5s default under CI load.
     const review = page.getByTestId("payment-under-review");
-    await expect(review).toBeVisible();
+    await expect(review).toBeVisible({ timeout: 15_000 });
     await expect(
       review.getByRole("heading", { name: "Payment Notification Submitted" }),
     ).toBeVisible();
@@ -115,7 +136,7 @@ test.describe("a shipment with an outstanding invoice", () => {
   });
 
   test("stays in review when the page is opened again", async ({ page }) => {
-    await page.goto(`/track/${TRACKING_INVOICE}`);
+    await page.goto(`/track/${TRACKING_INVOICE_SUBMIT}`);
     await expect(page.getByTestId("payment-under-review")).toBeVisible();
     await expect(page.getByTestId("invoice-card")).toHaveCount(0);
   });

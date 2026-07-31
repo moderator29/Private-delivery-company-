@@ -36,6 +36,13 @@ export const TRACKING_DELAYED = "STDE1AYED123US";
 export const TRACKING_AWAITING_EMAIL = "STEMA1123456US";
 /** Email is in and an invoice is due: the invoice and BTC payment step is live. */
 export const TRACKING_INVOICE = "STBTCPAY7788US";
+/**
+ * A second invoice shipment used only by the payment-notification test, which
+ * mutates it. Keeping it separate from TRACKING_INVOICE means the read-only
+ * display tests never depend on whether the submit test has run, so a retry of
+ * the stateful test cannot break them.
+ */
+export const TRACKING_INVOICE_SUBMIT = "STPAYSENT990US";
 /** Well formed, deliberately absent from the fixtures. */
 export const TRACKING_UNKNOWN = "STZZ999999ZZUS";
 
@@ -394,12 +401,21 @@ const INVOICE_DUE = {
   ],
 };
 
+/** The mutable twin of INVOICE_DUE, owned by the payment-notification test. */
+const INVOICE_SUBMIT = {
+  ...INVOICE_DUE,
+  tracking_id: TRACKING_INVOICE_SUBMIT,
+  events: INVOICE_DUE.events.map((e) => ({ ...e })),
+  invoice_items: INVOICE_DUE.invoice_items.map((i) => ({ ...i })),
+};
+
 const SHIPMENTS = new Map([
   [TRACKING_IN_TRANSIT, IN_TRANSIT],
   [TRACKING_DELIVERED, DELIVERED],
   [TRACKING_DELAYED, DELAYED],
   [TRACKING_AWAITING_EMAIL, AWAITING_EMAIL],
   [TRACKING_INVOICE, INVOICE_DUE],
+  [TRACKING_INVOICE_SUBMIT, INVOICE_SUBMIT],
 ]);
 
 /* ------------------------------------------------------------------------- */

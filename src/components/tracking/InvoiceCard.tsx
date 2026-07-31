@@ -68,6 +68,7 @@ export function InvoiceCard({
   );
   const [confirmOpen, setConfirmOpen] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -150,7 +151,7 @@ export function InvoiceCard({
         {walletAddress ? <WalletAddressField address={walletAddress} /> : null}
 
         {/* Notify, guarded by a confirmation dialog. */}
-        <form action={formAction} className="mt-6">
+        <form ref={formRef} action={formAction} className="mt-6">
           <input type="hidden" name="trackingId" value={trackingId} />
 
           <Button
@@ -214,8 +215,15 @@ export function InvoiceCard({
                 >
                   Cancel
                 </Button>
-                {/* The one real submit. Posting the form fires the server action. */}
-                <Button type="submit" disabled={pending} data-testid="confirm-payment-submit">
+                {/* The one real submit. requestSubmit() fires the form's action
+                    directly rather than relying on a native submit inside a
+                    top-layer <dialog>, which dispatches unreliably. */}
+                <Button
+                  type="button"
+                  onClick={() => formRef.current?.requestSubmit()}
+                  disabled={pending}
+                  data-testid="confirm-payment-submit"
+                >
                   {pending ? (
                     <>
                       <SpinnerIcon className="size-4 motion-safe:animate-spin" />
