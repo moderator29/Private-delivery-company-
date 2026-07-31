@@ -84,6 +84,13 @@ from new_shipment,
     'Departed Dubai on the linehaul to the destination country.',
     'Dubai', null, 'AE', 25.204800, 55.270800,
     timestamptz '2026-07-30 18:35:00+04'
+  ),
+  (
+    'awaiting_verification',
+    'Held for Verification',
+    'The shipment is on hold at the Dubai gateway while we verify the contents and paperwork. It is not moving while this check is in progress. No action is needed from the sender or the recipient.',
+    'Dubai', null, 'AE', 25.204800, 55.270800,
+    timestamptz '2026-07-30 21:10:00+04'
   )
 ) as event(status, title, description, city, state, country, latitude, longitude, occurred_at);
 

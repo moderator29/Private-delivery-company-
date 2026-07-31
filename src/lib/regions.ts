@@ -17,7 +17,6 @@ export interface Region {
   country: string;
   name: string;
   /** Local desk covering this region. */
-  supportPhone: string;
   supportHours: string;
   timeZoneLabel: string;
   languages: string[];
@@ -30,7 +29,6 @@ export const REGIONS: Region[] = [
     code: "AE",
     country: "AE",
     name: "United Arab Emirates",
-    supportPhone: "+971 4 555 0142",
     supportHours: "Sunday to Thursday, 8:00 AM to 8:00 PM GST",
     timeZoneLabel: "GST",
     languages: ["English"],
@@ -40,7 +38,6 @@ export const REGIONS: Region[] = [
     code: "US",
     country: "US",
     name: "United States",
-    supportPhone: "+1 (888) 555 0142",
     supportHours: "Monday to Friday, 8:00 AM to 8:00 PM ET",
     timeZoneLabel: "ET",
     languages: ["English"],
@@ -49,7 +46,6 @@ export const REGIONS: Region[] = [
     code: "GB",
     country: "GB",
     name: "United Kingdom",
-    supportPhone: "+44 20 7555 0142",
     supportHours: "Monday to Friday, 8:00 AM to 6:00 PM GMT",
     timeZoneLabel: "GMT",
     languages: ["English"],
@@ -58,7 +54,6 @@ export const REGIONS: Region[] = [
     code: "IN",
     country: "IN",
     name: "India",
-    supportPhone: "+91 22 5555 0142",
     supportHours: "Monday to Saturday, 9:00 AM to 7:00 PM IST",
     timeZoneLabel: "IST",
     languages: ["English"],

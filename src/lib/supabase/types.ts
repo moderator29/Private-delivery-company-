@@ -414,6 +414,7 @@ export type Database = {
         | "delivery_attempted"
         | "delayed"
         | "exception"
+        | "awaiting_verification"
         | "returned"
         | "cancelled";
       support_request_status: "new" | "in_review" | "resolved" | "closed";

@@ -107,7 +107,7 @@ export function RegionDialog({ current }: { current: Region }) {
                       ) : null}
                     </span>
                     <span className="mt-0.5 block text-sm text-ink-500">
-                      {region.languages.join(", ")} - {region.supportPhone}
+                      {region.languages.join(", ")} - {region.timeZoneLabel}
                     </span>
                   </span>
 

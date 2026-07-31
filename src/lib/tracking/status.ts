@@ -17,6 +17,7 @@ export const SHIPMENT_STATUSES = [
   "delivery_attempted",
   "delayed",
   "exception",
+  "awaiting_verification",
   "returned",
   "cancelled",
 ] as const;
@@ -24,10 +25,14 @@ export const SHIPMENT_STATUSES = [
 export type ShipmentStatus = (typeof SHIPMENT_STATUSES)[number];
 
 export function isShipmentStatus(value: unknown): value is ShipmentStatus {
-  return typeof value === "string" && (SHIPMENT_STATUSES as readonly string[]).includes(value);
+  return (
+    typeof value === "string" &&
+    (SHIPMENT_STATUSES as readonly string[]).includes(value)
+  );
 }
 
-export type StatusTone = "neutral" | "moving" | "delivered" | "attention" | "stopped";
+export type StatusTone =
+  "neutral" | "moving" | "delivered" | "attention" | "stopped";
 
 export interface StatusMeta {
   /** Customer facing label. Sentence case, no invented jargon. */
@@ -88,6 +93,12 @@ export const STATUS_META: Record<ShipmentStatus, StatusMeta> = {
     description: "Something needs attention before delivery can continue.",
     tone: "attention",
   },
+  awaiting_verification: {
+    label: "Awaiting Verification",
+    description:
+      "The package is on hold while we verify the shipment. It is not moving until that is complete.",
+    tone: "attention",
+  },
   returned: {
     label: "Returned to Sender",
     description: "The package is on its way back to the sender.",
@@ -101,15 +112,24 @@ export const STATUS_META: Record<ShipmentStatus, StatusMeta> = {
 };
 
 /** Statuses where nothing further will happen without operator action. */
-const CLOSED_STATUSES = new Set<ShipmentStatus>(["delivered", "returned", "cancelled"]);
+const CLOSED_STATUSES = new Set<ShipmentStatus>([
+  "delivered",
+  "returned",
+  "cancelled",
+]);
 
 /** Statuses that mean the package is physically moving right now. */
-const MOVING_STATUSES = new Set<ShipmentStatus>(["picked_up", "in_transit", "out_for_delivery"]);
+const MOVING_STATUSES = new Set<ShipmentStatus>([
+  "picked_up",
+  "in_transit",
+  "out_for_delivery",
+]);
 
 const ATTENTION_STATUSES = new Set<ShipmentStatus>([
   "delivery_attempted",
   "delayed",
   "exception",
+  "awaiting_verification",
 ]);
 
 export function isClosed(status: ShipmentStatus): boolean {
@@ -172,6 +192,7 @@ export function journeyProgress(status: ShipmentStatus): number {
       return (MILESTONE_INDEX.get("out_for_delivery") ?? lastIndex) / lastIndex;
     case "delayed":
     case "exception":
+    case "awaiting_verification":
     case "returned":
     case "cancelled":
       // Position is unknown along the normal path, so sit at the midpoint
@@ -238,23 +259,26 @@ export function buildProgressSteps(
 
   // Only project past the furthest milestone any observed event has reached, so
   // an out-of-order backfilled event cannot resurrect a completed milestone.
-  const reachedIndex = events.reduce((furthest, event) => {
-    const index = MILESTONE_INDEX.get(event.status);
-    return index === undefined ? furthest : Math.max(furthest, index);
-  }, MILESTONE_INDEX.get(currentStatus) ?? -1);
-
-  const projected: ProgressStep[] = JOURNEY_MILESTONES.slice(reachedIndex + 1).map(
-    (milestone) => ({
-      key: `expected-${milestone.status}`,
-      label: milestone.label,
-      state: "upcoming" as const,
-      status: milestone.status,
-      occurredAt: null,
-      locationLabel: destinationLabel,
-      description: null,
-      projected: true,
-    }),
+  const reachedIndex = events.reduce(
+    (furthest, event) => {
+      const index = MILESTONE_INDEX.get(event.status);
+      return index === undefined ? furthest : Math.max(furthest, index);
+    },
+    MILESTONE_INDEX.get(currentStatus) ?? -1,
   );
+
+  const projected: ProgressStep[] = JOURNEY_MILESTONES.slice(
+    reachedIndex + 1,
+  ).map((milestone) => ({
+    key: `expected-${milestone.status}`,
+    label: milestone.label,
+    state: "upcoming" as const,
+    status: milestone.status,
+    occurredAt: null,
+    locationLabel: destinationLabel,
+    description: null,
+    projected: true,
+  }));
 
   return [...observed, ...projected];
 }

@@ -95,8 +95,17 @@ export interface DashboardCounts {
   total: number;
 }
 
-const ATTENTION_STATUSES: ShipmentStatus[] = ["delayed", "exception", "delivery_attempted"];
-const MOVING_STATUSES: ShipmentStatus[] = ["picked_up", "in_transit", "arrived_at_facility"];
+const ATTENTION_STATUSES: ShipmentStatus[] = [
+  "delayed",
+  "exception",
+  "delivery_attempted",
+  "awaiting_verification",
+];
+const MOVING_STATUSES: ShipmentStatus[] = [
+  "picked_up",
+  "in_transit",
+  "arrived_at_facility",
+];
 
 /**
  * Real counts, computed with head-only count queries so the dashboard never
@@ -106,27 +115,47 @@ export async function getDashboardCounts(): Promise<DashboardCounts> {
   const supabase = await createSupabaseServerClient();
   const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
 
-  const countOf = async (build: (query: ReturnType<typeof baseQuery>) => unknown) => {
+  const countOf = async (
+    build: (query: ReturnType<typeof baseQuery>) => unknown,
+  ) => {
     const query = baseQuery();
-    const { count, error } = (await build(query)) as { count: number | null; error: unknown };
+    const { count, error } = (await build(query)) as {
+      count: number | null;
+      error: unknown;
+    };
     if (error) throw error;
     return count ?? 0;
   };
 
   function baseQuery() {
-    return supabase.from("shipments").select("*", { count: "exact", head: true });
+    return supabase
+      .from("shipments")
+      .select("*", { count: "exact", head: true });
   }
 
-  const [active, inTransit, outForDelivery, deliveredLast7Days, needsAttention, archived, total] =
-    await Promise.all([
-      countOf((q) => q.is("archived_at", null).not("status", "in", "(delivered,cancelled,returned)")),
-      countOf((q) => q.is("archived_at", null).in("status", MOVING_STATUSES)),
-      countOf((q) => q.is("archived_at", null).eq("status", "out_for_delivery")),
-      countOf((q) => q.eq("status", "delivered").gte("delivered_at", sevenDaysAgo)),
-      countOf((q) => q.is("archived_at", null).in("status", ATTENTION_STATUSES)),
-      countOf((q) => q.not("archived_at", "is", null)),
-      countOf((q) => q),
-    ]);
+  const [
+    active,
+    inTransit,
+    outForDelivery,
+    deliveredLast7Days,
+    needsAttention,
+    archived,
+    total,
+  ] = await Promise.all([
+    countOf((q) =>
+      q
+        .is("archived_at", null)
+        .not("status", "in", "(delivered,cancelled,returned)"),
+    ),
+    countOf((q) => q.is("archived_at", null).in("status", MOVING_STATUSES)),
+    countOf((q) => q.is("archived_at", null).eq("status", "out_for_delivery")),
+    countOf((q) =>
+      q.eq("status", "delivered").gte("delivered_at", sevenDaysAgo),
+    ),
+    countOf((q) => q.is("archived_at", null).in("status", ATTENTION_STATUSES)),
+    countOf((q) => q.not("archived_at", "is", null)),
+    countOf((q) => q),
+  ]);
 
   return {
     active,
@@ -158,7 +187,9 @@ export interface ShipmentListResult {
  * and commas are stripped because they would otherwise be read as filter
  * separators inside an `or` expression.
  */
-export async function listShipments(query: ShipmentListQuery = {}): Promise<ShipmentListResult> {
+export async function listShipments(
+  query: ShipmentListQuery = {},
+): Promise<ShipmentListResult> {
   const supabase = await createSupabaseServerClient();
 
   const page = Math.max(1, Math.floor(query.page ?? 1));
@@ -166,7 +197,9 @@ export async function listShipments(query: ShipmentListQuery = {}): Promise<Ship
     MAX_PAGE_SIZE,
     Math.max(5, Math.floor(query.pageSize ?? DEFAULT_PAGE_SIZE)),
   );
-  const sort: ShipmentSortField = isShipmentSortField(query.sort) ? query.sort : "created_at";
+  const sort: ShipmentSortField = isShipmentSortField(query.sort)
+    ? query.sort
+    : "created_at";
   const ascending = query.direction === "asc";
 
   let builder = supabase.from("shipments").select("*", { count: "exact" });
@@ -217,12 +250,18 @@ export async function listShipments(query: ShipmentListQuery = {}): Promise<Ship
 
 export async function getShipmentById(id: string): Promise<ShipmentRow | null> {
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.from("shipments").select("*").eq("id", id).maybeSingle();
+  const { data, error } = await supabase
+    .from("shipments")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
   if (error) throw error;
   return data;
 }
 
-export async function getShipmentEvents(shipmentId: string): Promise<ShipmentEventRow[]> {
+export async function getShipmentEvents(
+  shipmentId: string,
+): Promise<ShipmentEventRow[]> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("shipment_events")
@@ -243,7 +282,9 @@ export interface RecentActivityEntry {
   trackingId: string | null;
 }
 
-export async function getRecentActivity(limit = 8): Promise<RecentActivityEntry[]> {
+export async function getRecentActivity(
+  limit = 8,
+): Promise<RecentActivityEntry[]> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("audit_logs")
@@ -255,7 +296,8 @@ export async function getRecentActivity(limit = 8): Promise<RecentActivityEntry[
 
   return (data ?? []).map((row) => {
     const metadata = (row.metadata ?? {}) as Record<string, unknown>;
-    const trackingId = typeof metadata.tracking_id === "string" ? metadata.tracking_id : null;
+    const trackingId =
+      typeof metadata.tracking_id === "string" ? metadata.tracking_id : null;
     return {
       id: row.id,
       action: row.action,

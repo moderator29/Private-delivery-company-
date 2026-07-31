@@ -89,13 +89,14 @@ Nothing here is optional in the sense of "nice to have". Items marked
 
 ## Content and identity
 
-- [ ] **Replace the placeholder contact details in `src/lib/brand.ts` and set
-      `BRAND_CONTACT_IS_PLACEHOLDER = false`.** `supportEmail`, `privacyEmail`
-      and `businessEmail` all point at the reserved `swifttrack.example` domain,
-      and `supportPhone` is `+971 4 555 0142`. Every customer-facing occurrence
-      of the company name, address and support contact reads from this file, so
-      launching without changing it publishes a support address that goes
-      nowhere. Blocking.
+- [ ] **Confirm the remaining placeholder details in `src/lib/brand.ts` and set
+      `BRAND_CONTACT_IS_PLACEHOLDER = false`.** The support address is real and
+      published: `swifttracksupport@gmail.com`, used for support, privacy and
+      business enquiries alike. What is still unconfirmed is `mailingAddress`.
+      There is deliberately no telephone number anywhere on the site - support
+      is by email only - so nothing here should reintroduce one. Every
+      customer-facing occurrence of the company name, address and support
+      contact reads from this file. Blocking.
 
 - [ ] **Confirm the head office address and support hours are correct.**
       `mailingAddress` and `supportHours` in the same file appear on the legal

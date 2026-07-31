@@ -1,7 +1,12 @@
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/format";
-import { isMoving } from "@/lib/tracking/status";
-import { CheckIcon, PlaneIcon, TruckIcon } from "@/components/ui/icons";
+import { isMoving, needsAttention } from "@/lib/tracking/status";
+import {
+  AlertIcon,
+  CheckIcon,
+  PlaneIcon,
+  TruckIcon,
+} from "@/components/ui/icons";
 import type { ProgressStep } from "@/lib/tracking/status";
 
 /**
@@ -15,8 +20,8 @@ export function ProgressTimeline({ steps }: { steps: ProgressStep[] }) {
   if (steps.length === 0) {
     return (
       <p className="px-5 py-8 text-center text-sm text-ink-500">
-        No scan events have been recorded for this shipment yet. The first update appears here once
-        the package is scanned into our network.
+        No scan events have been recorded for this shipment yet. The first
+        update appears here once the package is scanned into our network.
       </p>
     );
   }
@@ -27,6 +32,12 @@ export function ProgressTimeline({ steps }: { steps: ProgressStep[] }) {
         const isLast = index === steps.length - 1;
         const complete = step.state === "complete";
         const current = step.state === "current";
+
+        // The current step is the one a customer reads as "where my package is
+        // now", so it has to carry the status's own tone. Rendering a held or
+        // failed shipment in the same green as one in motion, under a vehicle
+        // icon, says the opposite of what the event says.
+        const held = current && needsAttention(step.status);
 
         return (
           <li
@@ -50,12 +61,15 @@ export function ProgressTimeline({ steps }: { steps: ProgressStep[] }) {
               className={cn(
                 "relative mt-1 flex size-8 shrink-0 items-center justify-center rounded-full border-2",
                 complete && "border-go-500 bg-white text-go-600",
-                current && "border-go-600 bg-go-600 text-white",
+                current && !held && "border-go-600 bg-go-600 text-white",
+                held && "border-warn-600 bg-warn-600 text-white",
                 step.projected && "border-ink-200 bg-white text-ink-300",
               )}
             >
               {current ? (
-                isMoving(step.status) ? (
+                held ? (
+                  <AlertIcon className="size-4" />
+                ) : isMoving(step.status) ? (
                   <PlaneIcon className="size-4" />
                 ) : (
                   <TruckIcon className="size-4" />
@@ -72,18 +86,38 @@ export function ProgressTimeline({ steps }: { steps: ProgressStep[] }) {
                 <p
                   className={cn(
                     "text-sm font-semibold",
-                    current ? "text-go-700" : step.projected ? "text-ink-400" : "text-ink-800",
+                    held
+                      ? "text-warn-700"
+                      : current
+                        ? "text-go-700"
+                        : step.projected
+                          ? "text-ink-400"
+                          : "text-ink-800",
                   )}
                 >
                   {step.label}
                   {step.projected ? (
-                    <span className="sr-only-focusable absolute"> (expected, not yet scanned)</span>
+                    <span className="sr-only-focusable absolute">
+                      {" "}
+                      (expected, not yet scanned)
+                    </span>
                   ) : null}
                 </p>
 
                 {step.occurredAt ? (
-                  <p className={cn("mt-0.5 text-sm", current ? "text-go-600" : "text-ink-500")}>
-                    <time dateTime={step.occurredAt}>{formatDateTime(step.occurredAt)}</time>
+                  <p
+                    className={cn(
+                      "mt-0.5 text-sm",
+                      held
+                        ? "text-warn-700"
+                        : current
+                          ? "text-go-600"
+                          : "text-ink-500",
+                    )}
+                  >
+                    <time dateTime={step.occurredAt}>
+                      {formatDateTime(step.occurredAt)}
+                    </time>
                   </p>
                 ) : (
                   <p className="mt-0.5 text-xs font-medium tracking-wide text-ink-400 uppercase">
@@ -92,7 +126,9 @@ export function ProgressTimeline({ steps }: { steps: ProgressStep[] }) {
                 )}
 
                 {step.description ? (
-                  <p className="mt-1 text-sm leading-relaxed text-ink-500">{step.description}</p>
+                  <p className="mt-1 text-sm leading-relaxed text-ink-500">
+                    {step.description}
+                  </p>
                 ) : null}
               </div>
 

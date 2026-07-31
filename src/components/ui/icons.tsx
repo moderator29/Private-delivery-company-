@@ -219,14 +219,6 @@ export function MailIcon(props: IconProps) {
   );
 }
 
-export function PhoneIcon(props: IconProps) {
-  return (
-    <Icon {...props}>
-      <path d="M8.4 4.2 10 7.5l-1.9 1.6a10.5 10.5 0 0 0 5.3 5.3L15 12.5l3.3 1.6v3.2a2 2 0 0 1-2.2 2A14.5 14.5 0 0 1 3.2 6.4a2 2 0 0 1 2-2.2h3.2Z" />
-    </Icon>
-  );
-}
-
 export function LockIcon(props: IconProps) {
   return (
     <Icon {...props}>

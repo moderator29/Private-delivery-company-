@@ -337,3 +337,50 @@ describe("buildProgressSteps", () => {
     }
   });
 });
+
+/**
+ * The hold state. It exists because neither "delayed" nor "exception" could say
+ * the thing a customer actually needs to hear: the package is stopped on
+ * purpose, nothing is wrong with it, and it will resume.
+ */
+describe("awaiting_verification", () => {
+  it("raises attention without claiming the package is moving", () => {
+    expect(needsAttention("awaiting_verification")).toBe(true);
+    // The route marker animates on isMoving. A held package must sit still.
+    expect(isMoving("awaiting_verification")).toBe(false);
+  });
+
+  it("is a hold, not an ending, so the rest of the journey still projects", () => {
+    expect(isClosed("awaiting_verification")).toBe(false);
+
+    const steps = buildProgressSteps(
+      [
+        {
+          status: "awaiting_verification",
+          title: "Held for Verification",
+          description: null,
+          occurredAt: "2026-07-30T17:10:00Z",
+          locationLabel: "Dubai",
+        },
+      ],
+      "awaiting_verification",
+      "Miami, USA",
+    );
+
+    expect(steps.some((step) => step.projected)).toBe(true);
+    expect(steps.at(-1)?.status).toBe("delivered");
+  });
+
+  it("does not imply progress along the normal path", () => {
+    expect(journeyProgress("awaiting_verification")).toBe(0.5);
+  });
+
+  it("tells the customer it is stopped rather than late", () => {
+    expect(STATUS_META.awaiting_verification.label).toBe(
+      "Awaiting Verification",
+    );
+    expect(STATUS_META.awaiting_verification.description).toContain(
+      "not moving",
+    );
+  });
+});

@@ -22,10 +22,14 @@ export const BRAND = {
     countryCode: "AE",
   },
 
-  supportEmail: "support@swifttrack.example",
-  privacyEmail: "privacy@swifttrack.example",
-  businessEmail: "business@swifttrack.example",
-  supportPhone: "+971 4 555 0142",
+  /**
+   * One mailbox for everything. The business has a single published address,
+   * and routing privacy or business enquiries to made-up aliases nobody reads
+   * would be worse than sending them all somewhere a person actually looks.
+   */
+  supportEmail: "swifttracksupport@gmail.com",
+  privacyEmail: "swifttracksupport@gmail.com",
+  businessEmail: "swifttracksupport@gmail.com",
   supportHours: "Sunday to Thursday, 8:00 AM to 8:00 PM GST",
 
   mailingAddress: {
@@ -38,11 +42,10 @@ export const BRAND = {
 } as const;
 
 /**
- * The contact details above are placeholders for a business that has not
- * published its real ones yet. They deliberately use the reserved example.com
- * domain rather than a plausible-looking address, so nothing here can route a
- * real customer to a mailbox nobody reads.
+ * The support address is real. The mailing address below it is not yet, so this
+ * stays true until that is confirmed too. docs/LAUNCH_CHECKLIST.md tracks it.
  *
- * Replace them before launch. docs/LAUNCH_CHECKLIST.md tracks this.
+ * There is deliberately no telephone number anywhere: support is by email only,
+ * and publishing a number nobody answers is worse than publishing none.
  */
 export const BRAND_CONTACT_IS_PLACEHOLDER = true;

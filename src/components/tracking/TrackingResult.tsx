@@ -27,7 +27,12 @@ import {
 } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import type { TrackedShipment } from "@/lib/tracking/shipment";
-import { STATUS_META, needsAttention } from "@/lib/tracking/status";
+import {
+  STATUS_META,
+  isMoving,
+  needsAttention,
+  type StatusTone,
+} from "@/lib/tracking/status";
 import { formatTrackingId } from "@/lib/tracking/tracking-id";
 
 export function TrackingResult({
@@ -50,7 +55,11 @@ export function TrackingResult({
             <h1 className="text-[26px] font-bold tracking-tight text-ink-900 sm:text-3xl">
               Tracking Result
             </h1>
-            <StatusPulse label={meta.label} tone={delivered ? "delivered" : "moving"} />
+            <StatusPulse
+              label={meta.label}
+              tone={meta.tone}
+              animate={isMoving(shipment.status)}
+            />
           </div>
           <p className="mt-1.5 text-[15px] text-ink-600">{meta.description}</p>
         </div>
@@ -66,14 +75,20 @@ export function TrackingResult({
               {formatTrackingId(shipment.trackingId)}
             </span>
           </div>
-          <CopyButton value={shipment.trackingId} label="Copy tracking number" />
+          <CopyButton
+            value={shipment.trackingId}
+            label="Copy tracking number"
+          />
         </Card>
       </div>
 
       {needsAttention(shipment.status) ? (
-        <Alert tone="warning" title={`This shipment is marked ${meta.label.toLowerCase()}`}>
-          Our operations team is working on it. Contact support with your tracking number if you
-          need an update sooner.
+        <Alert
+          tone="warning"
+          title={`This shipment is marked ${meta.label.toLowerCase()}`}
+        >
+          Our operations team is working on it. Contact support with your
+          tracking number if you need an update sooner.
         </Alert>
       ) : null}
 
@@ -92,7 +107,9 @@ export function TrackingResult({
             <ProgressTimeline steps={shipment.progress} />
           </Card>
 
-          {rating.canRate ? <RatingCard trackingId={shipment.trackingId} /> : null}
+          {rating.canRate ? (
+            <RatingCard trackingId={shipment.trackingId} />
+          ) : null}
 
           {rating.rated && rating.stars ? (
             <Card className="flex items-center gap-3 px-5 py-4">
@@ -103,13 +120,16 @@ export function TrackingResult({
                     filled={value <= (rating.stars ?? 0)}
                     className={cn(
                       "size-5",
-                      value <= (rating.stars ?? 0) ? "text-warn-600" : "text-ink-300",
+                      value <= (rating.stars ?? 0)
+                        ? "text-warn-600"
+                        : "text-ink-300",
                     )}
                   />
                 ))}
               </span>
               <p className="text-sm text-ink-600">
-                This delivery was rated {rating.stars} out of 5. Thank you for the feedback.
+                This delivery was rated {rating.stars} out of 5. Thank you for
+                the feedback.
               </p>
             </Card>
           ) : null}
@@ -146,32 +166,45 @@ export function TrackingResult({
               />
 
               <dl className="mt-5 border-t border-ink-100">
-                <DetailRow label="Service Type">{shipment.serviceLevelLabel}</DetailRow>
+                <DetailRow label="Service Type">
+                  {shipment.serviceLevelLabel}
+                </DetailRow>
                 <DetailRow label="Package Type">
                   {shipment.package.packageType ?? "Not specified"}
                 </DetailRow>
-                {shipment.package.pieceCount && shipment.package.pieceCount > 1 ? (
-                  <DetailRow label="Pieces">{shipment.package.pieceCount}</DetailRow>
+                {shipment.package.pieceCount &&
+                shipment.package.pieceCount > 1 ? (
+                  <DetailRow label="Pieces">
+                    {shipment.package.pieceCount}
+                  </DetailRow>
                 ) : null}
                 <DetailRow label="Weight">
                   {formatWeight(shipment.package.weightKg) ?? "Not recorded"}
                 </DetailRow>
                 {shipment.package.dimensionsLabel ? (
-                  <DetailRow label="Dimensions">{shipment.package.dimensionsLabel}</DetailRow>
+                  <DetailRow label="Dimensions">
+                    {shipment.package.dimensionsLabel}
+                  </DetailRow>
                 ) : null}
-                <DetailRow label="Status" tone={delivered ? "success" : "moving"}>
+                <DetailRow label="Status" tone={meta.tone}>
                   {meta.label}
                 </DetailRow>
                 {delivered && shipment.deliveredAt ? (
-                  <DetailRow label="Delivered" tone="success">
+                  <DetailRow label="Delivered" tone="delivered">
                     <time dateTime={shipment.deliveredAt}>
                       {formatDateTime(shipment.deliveredAt)}
                     </time>
                   </DetailRow>
                 ) : (
-                  <DetailRow label="Estimated Delivery" tone="success">
+                  <DetailRow
+                    label="Estimated Delivery"
+                    tone={
+                      needsAttention(shipment.status) ? "neutral" : "delivered"
+                    }
+                  >
                     <span className="block">
-                      {formatCalendarDate(shipment.estimatedDeliveryDate) ?? "To be confirmed"}
+                      {formatCalendarDate(shipment.estimatedDeliveryDate) ??
+                        "To be confirmed"}
                     </span>
                     {shipment.estimatedDeliveryWindow ? (
                       <span className="block font-semibold">
@@ -193,7 +226,8 @@ export function TrackingResult({
               {shipment.currentLocationLabel ?? "No scan recorded yet"}
             </p>
             <p className="mt-2 text-xs leading-relaxed text-ink-500">
-              Where the package was last scanned by our network. This is not a live position.
+              Where the package was last scanned by our network. This is not a
+              live position.
             </p>
           </Card>
         </div>
@@ -201,12 +235,21 @@ export function TrackingResult({
 
       {/* Summary strip. */}
       <Card className="grid grid-cols-1 divide-y divide-ink-100 motion-safe:animate-[fade-up_.5s_var(--ease-out-soft)_both] motion-safe:[animation-delay:240ms] sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4 lg:divide-x">
-        <SummaryStat icon={<CalendarIcon className="size-5" />} label="Ordered On">
-          <time dateTime={shipment.createdAt}>{formatDate(shipment.createdAt)}</time>
+        <SummaryStat
+          icon={<CalendarIcon className="size-5" />}
+          label="Ordered On"
+        >
+          <time dateTime={shipment.createdAt}>
+            {formatDate(shipment.createdAt)}
+          </time>
         </SummaryStat>
         <SummaryStat
           icon={<ClockIcon className="size-5" />}
-          label={shipment.transitIsEstimate ? "Transit Time (planned)" : "Transit Time"}
+          label={
+            shipment.transitIsEstimate
+              ? "Transit Time (planned)"
+              : "Transit Time"
+          }
         >
           {formatDaysLabel(shipment.transitDays) ?? "Not yet picked up"}
         </SummaryStat>
@@ -224,7 +267,9 @@ export function TrackingResult({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-ink-500">
           Last updated{" "}
-          <time dateTime={shipment.updatedAt}>{formatDateTime(shipment.updatedAt)}</time>
+          <time dateTime={shipment.updatedAt}>
+            {formatDateTime(shipment.updatedAt)}
+          </time>
         </p>
         <CopyButton
           value={shareUrl}
@@ -237,19 +282,61 @@ export function TrackingResult({
   );
 }
 
+/**
+ * Colours for the status chip and the Status detail row.
+ *
+ * Driven by the status's own tone rather than by "is it delivered", which is
+ * what this used to ask. That question has only two answers, so every status
+ * that was not "delivered" - including delayed, exception and a shipment held
+ * for verification - rendered in the same green as one moving normally, over a
+ * description explaining that something was wrong.
+ */
+const TONE_STYLES: Record<StatusTone, { dot: string; text: string }> = {
+  neutral: { dot: "bg-ink-400", text: "text-ink-700" },
+  moving: { dot: "bg-go-500", text: "text-go-700" },
+  delivered: { dot: "bg-go-600", text: "text-go-700" },
+  attention: { dot: "bg-warn-600", text: "text-warn-700" },
+  stopped: { dot: "bg-brand-600", text: "text-brand-700" },
+};
+
 /** Status chip with a soft pulse, matching the reference header treatment. */
-function StatusPulse({ label, tone }: { label: string; tone: "moving" | "delivered" }) {
-  const colour = tone === "delivered" ? "bg-go-600" : "bg-go-500";
+function StatusPulse({
+  label,
+  tone,
+  animate,
+}: {
+  label: string;
+  tone: StatusTone;
+  /**
+   * The pulse is a claim that something is happening right now, so it is tied
+   * to the package actually being in motion. A held or delivered shipment shows
+   * a still dot.
+   */
+  animate: boolean;
+}) {
+  const style = TONE_STYLES[tone];
   return (
-    <span className="inline-flex items-center gap-2 text-[15px] font-semibold text-go-700">
+    <span
+      className={cn(
+        "inline-flex items-center gap-2 text-[15px] font-semibold",
+        style.text,
+      )}
+    >
       <span className="relative flex size-2.5">
+        {animate ? (
+          <span
+            className={cn(
+              "absolute inline-flex size-full rounded-full opacity-60 motion-safe:animate-ping",
+              style.dot,
+            )}
+          />
+        ) : null}
         <span
           className={cn(
-            "absolute inline-flex size-full rounded-full opacity-60 motion-safe:animate-ping",
-            colour,
+            "relative inline-flex size-2.5 rounded-full",
+            style.dot,
           )}
         />
-        <span className={cn("relative inline-flex size-2.5 rounded-full", colour)} />
       </span>
       {label}
     </span>
@@ -275,13 +362,21 @@ function PartyBlock({
       <div className="mt-1.5 flex items-start justify-between gap-3">
         <div className="flex min-w-0 gap-2.5">
           <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-ink-100 text-ink-500">
-            <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              viewBox="0 0 24 24"
+              className="size-3.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <circle cx="12" cy="8" r="3.5" />
               <path d="M5 20a7 7 0 0 1 14 0" strokeLinecap="round" />
             </svg>
           </span>
           <div className="min-w-0">
-            <p className="text-[15px] font-bold text-ink-900">{name ?? "Not provided"}</p>
+            <p className="text-[15px] font-bold text-ink-900">
+              {name ?? "Not provided"}
+            </p>
             {company ? <p className="text-sm text-ink-600">{company}</p> : null}
             {lines.map((line) => (
               <p key={line} className="text-sm leading-relaxed text-ink-600">
@@ -299,11 +394,12 @@ function PartyBlock({
 function DetailRow({
   label,
   children,
-  tone = "default",
+  tone,
 }: {
   label: string;
   children: ReactNode;
-  tone?: "default" | "success" | "moving";
+  /** Omitted for plain facts; a status tone for anything that carries meaning. */
+  tone?: StatusTone;
 }) {
   return (
     <div className="flex items-start justify-between gap-4 border-b border-ink-100 py-3 last:border-b-0">
@@ -311,9 +407,7 @@ function DetailRow({
       <dd
         className={cn(
           "text-right text-sm font-semibold",
-          tone === "success" && "text-go-700",
-          tone === "moving" && "text-go-700",
-          tone === "default" && "text-ink-800",
+          tone ? TONE_STYLES[tone].text : "text-ink-800",
         )}
       >
         {children}
@@ -338,7 +432,9 @@ function SummaryStat({
       </span>
       <div className="min-w-0">
         <p className="text-sm text-ink-500">{label}</p>
-        <p className="truncate text-sm font-semibold text-ink-800">{children}</p>
+        <p className="truncate text-sm font-semibold text-ink-800">
+          {children}
+        </p>
       </div>
     </div>
   );

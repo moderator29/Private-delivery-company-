@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { SwiftTrackLogo } from "@/components/brand/SwiftTrackLogo";
-import { MailIcon, PhoneIcon } from "@/components/ui/icons";
+import { MailIcon } from "@/components/ui/icons";
 import { BRAND } from "@/lib/brand";
 import { FOOTER_NAV } from "@/lib/navigation";
 import { DEFAULT_REGION, type Region } from "@/lib/regions";
@@ -27,13 +27,6 @@ export function SiteFooter({ region = DEFAULT_REGION }: { region?: Region }) {
               >
                 <MailIcon className="size-4 text-ink-400" />
                 {BRAND.supportEmail}
-              </a>
-              <a
-                href={`tel:${region.supportPhone.replace(/[^+\d]/g, "")}`}
-                className="inline-flex items-center gap-2 text-ink-700 hover:text-brand-600"
-              >
-                <PhoneIcon className="size-4 text-ink-400" />
-                {region.supportPhone}
               </a>
               <span className="text-xs text-ink-500">
                 {region.name} desk - {region.supportHours}

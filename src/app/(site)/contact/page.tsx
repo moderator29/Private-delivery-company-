@@ -5,7 +5,7 @@ import { ContactForm } from "@/components/contact/ContactForm";
 import { PageHero } from "@/components/layout/PageHero";
 import { Reveal } from "@/components/ui/Motion";
 import { Card, Container } from "@/components/ui/Surface";
-import { BuildingIcon, ClockIcon, MailIcon, PhoneIcon, SupportIcon } from "@/components/ui/icons";
+import { BuildingIcon, ClockIcon, MailIcon, SupportIcon } from "@/components/ui/icons";
 import { BRAND } from "@/lib/brand";
 import { absoluteUrl } from "@/lib/env";
 
@@ -57,13 +57,6 @@ export default function ContactPage() {
                   >
                     <MailIcon className="size-4 text-ink-400" />
                     {BRAND.supportEmail}
-                  </a>
-                  <a
-                    href={`tel:${BRAND.supportPhone.replace(/[^+\d]/g, "")}`}
-                    className="inline-flex items-center gap-2 font-semibold text-ink-800 hover:text-brand-600"
-                  >
-                    <PhoneIcon className="size-4 text-ink-400" />
-                    {BRAND.supportPhone}
                   </a>
                 </div>
               </Card>
