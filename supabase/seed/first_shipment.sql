@@ -43,10 +43,10 @@ with new_shipment as (
     'Miami', 'Florida', '33193', 'US',
     25.761700, -80.191800,
     'Document', 0.05, 1,
-    '2026-08-06', 'By 8:00 PM',
+    '2026-08-02', 'By 8:00 PM',
     'awaiting_recipient_email', 'USD', 3000.00,
     'BTC', 'bc1qn5q5m0z89wwuc3834393hh59f2454grzr6y7x2',
-    timestamptz '2026-07-30 08:30:00+04'
+    timestamptz '2026-07-31 08:30:00+04'
   )
   returning id
 )
@@ -70,35 +70,35 @@ from new_shipment,
     'Shipment Information Received',
     'Shipment details received and the waybill was created.',
     'Dubai', null, 'AE', 25.204800, 55.270800,
-    timestamptz '2026-07-30 08:30:00+04'
+    timestamptz '2026-07-31 08:30:00+04'
   ),
   (
     'picked_up',
     'Picked Up',
     'Collected from the sender by a SwiftTrack courier.',
     'Dubai', null, 'AE', 25.204800, 55.270800,
-    timestamptz '2026-07-30 11:15:00+04'
+    timestamptz '2026-07-31 11:15:00+04'
   ),
   (
     'in_transit',
     'Departed Origin Facility',
     'Processed for export and released from the Dubai gateway.',
     'Dubai', null, 'AE', 25.204800, 55.270800,
-    timestamptz '2026-07-30 16:40:00+04'
+    timestamptz '2026-07-31 16:40:00+04'
   ),
   (
     'in_transit',
     'In Transit',
     'Departed Dubai on the linehaul to the destination country.',
     'Dubai', null, 'AE', 25.204800, 55.270800,
-    timestamptz '2026-07-30 18:35:00+04'
+    timestamptz '2026-07-31 18:35:00+04'
   ),
   (
     'awaiting_verification',
     'Held for Verification',
     'The shipment is on hold at the Dubai gateway while we verify the contents and paperwork. It is not moving while this check is in progress. No action is needed from the sender or the recipient.',
     'Dubai', null, 'AE', 25.204800, 55.270800,
-    timestamptz '2026-07-30 21:10:00+04'
+    timestamptz '2026-07-31 21:10:00+04'
   )
 ) as event(status, title, description, city, state, country, latitude, longitude, occurred_at);
 
