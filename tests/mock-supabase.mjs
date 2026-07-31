@@ -34,8 +34,20 @@ export const TRACKING_DELIVERED = "STDE11VERED1US";
 export const TRACKING_DELAYED = "STDE1AYED123US";
 /** Held, and waiting for the recipient to supply an email address. */
 export const TRACKING_AWAITING_EMAIL = "STEMA1123456US";
+/** Email is in and an invoice is due: the invoice and BTC payment step is live. */
+export const TRACKING_INVOICE = "STBTCPAY7788US";
+/**
+ * A second invoice shipment used only by the payment-notification test, which
+ * mutates it. Keeping it separate from TRACKING_INVOICE means the read-only
+ * display tests never depend on whether the submit test has run, so a retry of
+ * the stateful test cannot break them.
+ */
+export const TRACKING_INVOICE_SUBMIT = "STPAYSENT990US";
 /** Well formed, deliberately absent from the fixtures. */
 export const TRACKING_UNKNOWN = "STZZ999999ZZUS";
+
+/** The configured wallet for the invoice fixture. */
+const INVOICE_WALLET = "bc1qn5q5m0z89wwuc3834393hh59f2454grzr6y7x2";
 
 const DUBAI = {
   city: "Dubai",
@@ -116,6 +128,12 @@ const IN_TRANSIT = {
   // all of them.
   payment_status: null,
   recipient_email_submitted_at: null,
+  payment_method: null,
+  payment_wallet_address: null,
+  payment_currency: null,
+  total_amount_due: null,
+  payment_confirmation_at: null,
+  invoice_items: [],
   created_at: "2026-07-30T04:30:00+00:00",
   updated_at: "2026-08-01T06:45:00+00:00",
   events: [
@@ -325,11 +343,79 @@ const AWAITING_EMAIL = {
   ],
 };
 
+/**
+ * A shipment whose recipient email is already in, with an itemised invoice due
+ * and BTC configured as the method. This is where the invoice, the wallet and
+ * the "I've Sent Payment" button live.
+ *
+ * Mutable on purpose, like AWAITING_EMAIL: submit_payment_notification() below
+ * rewrites it exactly as the real function rewrites the row, so a browser test
+ * can assert the timeline picks up the new event on revalidation.
+ */
+const INVOICE_DUE = {
+  ...IN_TRANSIT,
+  tracking_id: TRACKING_INVOICE,
+  status: "awaiting_verification",
+  recipient: {
+    name: "Ines Duarte",
+    company: null,
+    address_line1: "440 Biscayne Boulevard",
+    address_line2: null,
+    city: "Miami",
+    state: "Florida",
+    postal_code: "33132",
+    country: "US",
+  },
+  payment_status: "email_received",
+  recipient_email_submitted_at: "2026-08-01T09:00:00+00:00",
+  payment_method: "BTC",
+  payment_wallet_address: INVOICE_WALLET,
+  payment_currency: "USD",
+  total_amount_due: "3000.00",
+  payment_confirmation_at: null,
+  invoice_items: [
+    { description: "Customs Clearance Fee", amount: "1500.00" },
+    { description: "Import Processing Fee", amount: "1400.00" },
+    { description: "Documentation Fee", amount: "100.00" },
+  ],
+  events: [
+    event(
+      "label_created",
+      "Shipment Information Received",
+      "Shipment details received and the waybill was created.",
+      "2026-07-30T04:30:00+00:00",
+    ),
+    event(
+      "in_transit",
+      "In Transit",
+      "Departed Dubai on the linehaul to the destination country.",
+      "2026-08-01T06:45:00+00:00",
+    ),
+    event(
+      "awaiting_verification",
+      "Recipient Email Received",
+      "The recipient securely submitted an email address. Payment documentation is now being prepared.",
+      "2026-08-01T09:00:00+00:00",
+      MIAMI,
+    ),
+  ],
+};
+
+/** The mutable twin of INVOICE_DUE, owned by the payment-notification test. */
+const INVOICE_SUBMIT = {
+  ...INVOICE_DUE,
+  tracking_id: TRACKING_INVOICE_SUBMIT,
+  events: INVOICE_DUE.events.map((e) => ({ ...e })),
+  invoice_items: INVOICE_DUE.invoice_items.map((i) => ({ ...i })),
+};
+
 const SHIPMENTS = new Map([
   [TRACKING_IN_TRANSIT, IN_TRANSIT],
   [TRACKING_DELIVERED, DELIVERED],
   [TRACKING_DELAYED, DELAYED],
   [TRACKING_AWAITING_EMAIL, AWAITING_EMAIL],
+  [TRACKING_INVOICE, INVOICE_DUE],
+  [TRACKING_INVOICE_SUBMIT, INVOICE_SUBMIT],
 ]);
 
 /* ------------------------------------------------------------------------- */
@@ -403,6 +489,42 @@ const RPC = {
         "awaiting_verification",
         "Recipient Email Received",
         "The recipient securely submitted an email address. Payment documentation is now being prepared.",
+        now,
+        MIAMI,
+      ),
+    ];
+
+    return { status: 200, payload: { ok: true } };
+  },
+
+  /**
+   * Mirrors public.submit_payment_notification(): the same verdict vocabulary,
+   * the same preconditions, and the same side effects on the shipment it
+   * accepts. It records a claim; it does not mark the shipment paid.
+   */
+  submit_payment_notification(body) {
+    const shipment = SHIPMENTS.get(normalizeTrackingId(body.p_tracking_id));
+    if (!shipment) {
+      return { status: 200, payload: { ok: false, reason: "not_found" } };
+    }
+    if (shipment.payment_status === "reviewing_payment") {
+      return { status: 200, payload: { ok: false, reason: "already_submitted" } };
+    }
+    if (shipment.payment_status !== "email_received") {
+      return { status: 200, payload: { ok: false, reason: "not_ready" } };
+    }
+
+    const now = new Date().toISOString();
+    shipment.payment_status = "reviewing_payment";
+    shipment.payment_confirmation_at = now;
+    shipment.payment_method = shipment.payment_method ?? "BTC";
+    shipment.updated_at = now;
+    shipment.events = [
+      ...shipment.events,
+      event(
+        "awaiting_verification",
+        "Payment Notification Submitted",
+        "The recipient reported that payment has been sent. The payment notification is awaiting manual review.",
         now,
         MIAMI,
       ),
@@ -708,6 +830,9 @@ const SHIPMENT_DEFAULTS = {
   payment_currency: null,
   total_amount_due: null,
   payment_reference: null,
+  payment_method: null,
+  payment_wallet_address: null,
+  payment_confirmation_at: null,
   estimated_delivery_window: "By 8:00 PM",
   internal_notes: null,
   current_location_label: "Dubai",
@@ -801,12 +926,34 @@ const SHIPMENT_ROWS = [
     recipient_name: "Ines Duarte",
     payment_status: "awaiting_recipient_email",
     payment_currency: "USD",
-    total_amount_due: 42,
+    total_amount_due: 3000,
+    payment_method: "BTC",
+    payment_wallet_address: "bc1qn5q5m0z89wwuc3834393hh59f2454grzr6y7x2",
     estimated_delivery_date: dueIn(7),
     shipped_at: ago(30),
     internal_notes: "Held pending recipient contact details.",
     created_at: ago(56),
     updated_at: ago(5),
+  }),
+  shipment({
+    tracking_id: TRACKING_INVOICE,
+    status: "awaiting_verification",
+    ...ROUTES.miami,
+    destination_postal_code: "33132",
+    destination_address_line1: "440 Biscayne Boulevard",
+    recipient_name: "Ines Duarte",
+    recipient_contact_email: "ines.duarte@example.test",
+    recipient_email_submitted_at: ago(20),
+    payment_status: "email_received",
+    payment_currency: "USD",
+    total_amount_due: 3000,
+    payment_method: "BTC",
+    payment_wallet_address: "bc1qn5q5m0z89wwuc3834393hh59f2454grzr6y7x2",
+    estimated_delivery_date: dueIn(7),
+    shipped_at: ago(30),
+    internal_notes: "Invoice issued; awaiting recipient payment notification.",
+    created_at: ago(58),
+    updated_at: ago(4),
   }),
   shipment({
     tracking_id: "ST4471902238GB",
@@ -1181,6 +1328,32 @@ const SHIPMENT_EVENT_ROWS = [
   }),
 ];
 
+/**
+ * Invoice line items for the shipment carrying an invoice, so the admin detail
+ * page can render the itemised breakdown it now shows.
+ */
+const INVOICE_ID = byTracking(TRACKING_INVOICE);
+
+let invoiceItemSequence = 0;
+
+function invoiceItem(shipmentId, description, amount, sortOrder) {
+  invoiceItemSequence += 1;
+  return {
+    id: `d4e5f6a7-0000-4000-8000-${String(invoiceItemSequence).padStart(12, "0")}`,
+    shipment_id: shipmentId,
+    description,
+    amount,
+    sort_order: sortOrder,
+    created_at: ago(58),
+  };
+}
+
+const SHIPMENT_INVOICE_ITEM_ROWS = [
+  invoiceItem(INVOICE_ID, "Customs Clearance Fee", 1500, 1),
+  invoiceItem(INVOICE_ID, "Import Processing Fee", 1400, 2),
+  invoiceItem(INVOICE_ID, "Documentation Fee", 100, 3),
+];
+
 const ADMIN_USER_ROWS = [
   {
     id: ADMIN_ID,
@@ -1239,6 +1412,7 @@ const TABLES = {
   admin_users: ADMIN_USER_ROWS,
   shipments: SHIPMENT_ROWS,
   shipment_events: SHIPMENT_EVENT_ROWS,
+  shipment_invoice_items: SHIPMENT_INVOICE_ITEM_ROWS,
   audit_logs: AUDIT_LOG_ROWS,
 };
 

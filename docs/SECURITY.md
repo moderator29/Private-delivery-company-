@@ -92,6 +92,12 @@ It returns:
 - `payment_status` and `recipient_email_submitted_at`, which are what tell the
   tracking page whether to ask the recipient for an email address or to confirm
   one arrived
+- `payment_method`, `payment_wallet_address`, `payment_currency`,
+  `total_amount_due`, `payment_confirmation_at` and `invoice_items` (an ordered
+  list of `{description, amount}`), which drive the invoice, the pay-to details
+  and the payment-review state. These describe what is owed and where to pay it,
+  not who is paying; the wallet address is a payment destination, shown to the
+  recipient the same way the delivery address is
 - `created_at`, `updated_at`
 - `events`: for each event with `is_public = true`, its status, title,
   description, facility label, city, state, country, coordinates and
@@ -198,17 +204,18 @@ back into a list of visitor addresses.
 
 ## Every function anon can call
 
-Six, all `SECURITY DEFINER`, all explicitly revoked from `public` and then
+Seven, all `SECURITY DEFINER`, all explicitly revoked from `public` and then
 granted to `anon`:
 
 | Function                                        | Migration              | What it does                                      |
 | ----------------------------------------------- | ---------------------- | ------------------------------------------------- |
-| `track_shipment(text)`                          | 0011 (created in 0003) | Public tracking lookup                            |
+| `track_shipment(text)`                          | 0012 (created in 0003) | Public tracking lookup                            |
 | `submit_support_request(...)`                   | 0005                   | Contact form intake, write only                   |
 | `submit_shipment_rating(text, int, text, text)` | 0007                   | One rating per delivered shipment                 |
 | `shipment_rating_state(text)`                   | 0007                   | Whether the rating form should appear             |
 | `service_performance()`                         | 0007                   | Aggregate counts and averages for the public site |
 | `submit_recipient_email(text, text)`            | 0011                   | One recipient email address per shipment          |
+| `submit_payment_notification(text)`             | 0012                   | One payment notification per shipment             |
 
 Everything else is closed. Migration `0004_harden_function_exposure.sql` exists
 because revoking from `anon` alone did not actually close anything: Postgres
@@ -242,6 +249,18 @@ Its verdicts are deliberately coarse where being precise would leak: `not_found`
 and `not_requested` are worded identically to the visitor, because telling
 someone which of the two applies would confirm whether a given shipment is
 waiting on a payment.
+
+`submit_payment_notification()` is shaped the same way, one step later in the
+flow. It moves a shipment from `email_received` to `reviewing_payment`, stamps
+`payment_confirmation_at`, records the method, and files a public
+`Payment Notification Submitted` event. It does **not** mark a shipment paid:
+the notification is the recipient's claim that they sent payment, which a person
+on the finance team verifies by hand. Its preconditions — the shipment exists,
+is not archived, has already had an email received, and has not already been
+reported — are enforced in the function, it selects the row `for update` so a
+double click resolves to one event, and a repeat is a no-op that returns
+`already_submitted`. Its `not_found` and `not_ready` verdicts are worded
+identically for the same reason the email function's are.
 
 
 

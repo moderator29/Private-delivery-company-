@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   MAX_EMAIL_LENGTH,
   emailValidationMessage,
+  formatMoney,
   isValidEmail,
   normalizeEmail,
+  parsePaymentMethod,
   parsePaymentStatus,
 } from "@/lib/tracking/payment";
 
@@ -83,11 +85,47 @@ describe("parsePaymentStatus", () => {
     expect(parsePaymentStatus("awaiting_recipient_email")).toBe("awaiting_recipient_email");
     expect(parsePaymentStatus("email_received")).toBe("email_received");
     expect(parsePaymentStatus("not_required")).toBe("not_required");
+    expect(parsePaymentStatus("reviewing_payment")).toBe("reviewing_payment");
   });
 
   it("treats anything else as not being in the flow", () => {
     for (const value of [null, undefined, "", "paid", 7, {}]) {
       expect(parsePaymentStatus(value)).toBeNull();
     }
+  });
+});
+
+describe("parsePaymentMethod", () => {
+  it("recognises the configured method", () => {
+    expect(parsePaymentMethod("BTC")).toBe("BTC");
+  });
+
+  it("treats anything else as no method on record", () => {
+    for (const value of [null, undefined, "", "btc", "ETH", 7, {}]) {
+      expect(parsePaymentMethod(value)).toBeNull();
+    }
+  });
+});
+
+describe("formatMoney", () => {
+  it("prefixes the currency and groups the amount", () => {
+    expect(formatMoney("USD", 1500)).toBe("USD 1,500");
+    expect(formatMoney("USD", 1400)).toBe("USD 1,400");
+    expect(formatMoney("USD", 100)).toBe("USD 100");
+    expect(formatMoney("USD", 3000)).toBe("USD 3,000");
+  });
+
+  it("keeps two decimals only when the amount is fractional", () => {
+    expect(formatMoney("USD", 12.5)).toBe("USD 12.50");
+    expect(formatMoney("EUR", 0)).toBe("EUR 0");
+  });
+
+  it("upper-cases the code and survives a missing one", () => {
+    expect(formatMoney("usd", 10)).toBe("USD 10");
+    expect(formatMoney("", 10)).toBe("10");
+  });
+
+  it("never throws on a non-finite amount", () => {
+    expect(formatMoney("USD", Number.NaN)).toBe("USD 0");
   });
 });

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { submitPaymentNotification } from "@/lib/data/payment-notification";
 import { submitRating } from "@/lib/data/ratings";
 import { submitRecipientEmail } from "@/lib/data/recipient-email";
 import { isValidEmail, normalizeEmail } from "@/lib/tracking/payment";
@@ -125,5 +126,62 @@ export async function submitRecipientEmailAction(
     status: "error",
     message: "We could not reach the service just now. Please try again.",
     email,
+  };
+}
+
+export interface PaymentNotificationFormState {
+  status: "idle" | "submitted" | "error";
+  message: string | null;
+}
+
+/**
+ * Server action behind the "I've Sent Payment" notification.
+ *
+ * It records that the recipient reported sending payment; it does not, and must
+ * not, mark the shipment paid. public.submit_payment_notification() enforces
+ * every precondition — the shipment exists, an email was received, and payment
+ * has not already been reported — so this endpoint is no more powerful than the
+ * button, whatever calls it.
+ *
+ * On success the tracking path is revalidated, which puts the new "Payment
+ * Notification Submitted" scan into the timeline without a page reload.
+ */
+export async function submitPaymentNotificationAction(
+  _previous: PaymentNotificationFormState,
+  formData: FormData,
+): Promise<PaymentNotificationFormState> {
+  const trackingId = normalizeTrackingId(String(formData.get("trackingId") ?? ""));
+
+  if (!isValidTrackingId(trackingId)) {
+    return { status: "error", message: "We could not identify that shipment." };
+  }
+
+  const result = await submitPaymentNotification(trackingId);
+
+  if (result.outcome === "saved") {
+    revalidatePath(`/track/${trackingId}`);
+    return { status: "submitted", message: null };
+  }
+
+  if (result.outcome === "rate_limited") {
+    return {
+      status: "error",
+      message: "Too many attempts from this connection. Please try again later.",
+    };
+  }
+
+  if (result.outcome === "rejected") {
+    // Already reported is a success from the visitor's side: the thing they were
+    // asked to do is done, and the review is already under way.
+    if (result.reason === "already_submitted") {
+      revalidatePath(`/track/${trackingId}`);
+      return { status: "submitted", message: null };
+    }
+    return { status: "error", message: result.message };
+  }
+
+  return {
+    status: "error",
+    message: "We could not reach the service just now. Please try again.",
   };
 }

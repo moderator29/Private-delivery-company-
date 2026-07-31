@@ -44,6 +44,15 @@ export interface RateLimitResult {
 }
 
 export function rateLimit(identifier: string, options: RateLimitOptions): RateLimitResult {
+  // The browser test suite drives hundreds of requests from one address in
+  // seconds, all landing in a single bucket because there is no forwarding
+  // header in front of `next start`. That is the exact shape this counter exists
+  // to stop, so the e2e harness disables it with this flag. Production never sets
+  // it, and no code path outside tests reads it.
+  if (process.env.E2E_RATE_LIMIT_DISABLED === "1") {
+    return { allowed: true, remaining: options.limit, retryAfterSeconds: 0 };
+  }
+
   const now = Date.now();
   evictExpired(now);
 

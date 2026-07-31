@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { CopyButton } from "@/components/tracking/CopyButton";
+import { InvoiceCard } from "@/components/tracking/InvoiceCard";
 import { ParcelIllustration } from "@/components/tracking/ParcelIllustration";
 import { ProgressTimeline } from "@/components/tracking/ProgressTimeline";
 import { RatingCard } from "@/components/tracking/RatingCard";
@@ -27,6 +28,7 @@ import {
   formatWeight,
 } from "@/lib/format";
 import { cn } from "@/lib/cn";
+import { PAYMENT_METHOD_LABELS } from "@/lib/tracking/payment";
 import type { TrackedShipment } from "@/lib/tracking/shipment";
 import {
   STATUS_META,
@@ -46,6 +48,21 @@ export function TrackingResult({
   const meta = STATUS_META[shipment.status];
   const shareUrl = absoluteUrl(`/track/${shipment.trackingId}`);
   const delivered = shipment.status === "delivered";
+
+  // The recipient payment flow. The email step runs while an address is being
+  // collected; once it is in (email_received), and from then on, the invoice and
+  // payment step take over. "reviewing_payment" is still past the email step, so
+  // the email card stays in its received state rather than asking again.
+  const emailStep =
+    shipment.paymentStatus === "awaiting_recipient_email" ||
+    shipment.paymentStatus === "email_received" ||
+    shipment.paymentStatus === "reviewing_payment";
+  const emailReceived =
+    shipment.paymentStatus === "email_received" ||
+    shipment.paymentStatus === "reviewing_payment";
+  // The invoice shows only after the address is in, and only when the shipment
+  // actually carries one.
+  const showInvoice = emailReceived && shipment.invoice !== null;
 
   return (
     <div className="flex flex-col gap-5">
@@ -94,12 +111,24 @@ export function TrackingResult({
       ) : null}
 
       {/* Directly under the status, because on a shipment that is asking for an
-          address this is the one thing the page wants the visitor to do. */}
-      {shipment.paymentStatus === "awaiting_recipient_email" ||
-      shipment.paymentStatus === "email_received" ? (
-        <RecipientEmailCard
+          address this is the one thing the page wants the visitor to do. Once
+          the address is in, the invoice and payment step follow immediately
+          below it. */}
+      {emailStep ? (
+        <RecipientEmailCard trackingId={shipment.trackingId} submitted={emailReceived} />
+      ) : null}
+
+      {showInvoice && shipment.invoice ? (
+        <InvoiceCard
           trackingId={shipment.trackingId}
-          submitted={shipment.paymentStatus === "email_received"}
+          invoice={shipment.invoice}
+          methodLabel={
+            shipment.paymentMethod
+              ? PAYMENT_METHOD_LABELS[shipment.paymentMethod]
+              : "Bitcoin (BTC)"
+          }
+          walletAddress={shipment.paymentWalletAddress}
+          submitted={shipment.paymentStatus === "reviewing_payment"}
         />
       ) : null}
 

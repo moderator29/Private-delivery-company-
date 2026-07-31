@@ -390,6 +390,55 @@ describe("parseTrackedShipment", () => {
     expect(JSON.stringify(shipment)).not.toContain("recipient@example.com");
   });
 
+  it("assembles the itemised invoice from the record", () => {
+    const shipment = parseTrackedShipment(
+      payload({
+        payment_status: "email_received",
+        payment_method: "BTC",
+        payment_wallet_address: "bc1qn5q5m0z89wwuc3834393hh59f2454grzr6y7x2",
+        payment_currency: "USD",
+        total_amount_due: "3000.00",
+        invoice_items: [
+          { description: "Customs Clearance Fee", amount: "1500.00" },
+          { description: "Import Processing Fee", amount: "1400.00" },
+          { description: "Documentation Fee", amount: "100.00" },
+        ],
+      }),
+    )!;
+
+    expect(shipment.paymentMethod).toBe("BTC");
+    expect(shipment.paymentWalletAddress).toBe("bc1qn5q5m0z89wwuc3834393hh59f2454grzr6y7x2");
+    expect(shipment.invoice).not.toBeNull();
+    expect(shipment.invoice!.currency).toBe("USD");
+    // The total is the recorded figure, not recomputed from the line items.
+    expect(shipment.invoice!.total).toBe(3000);
+    expect(shipment.invoice!.items).toEqual([
+      { description: "Customs Clearance Fee", amount: 1500 },
+      { description: "Import Processing Fee", amount: 1400 },
+      { description: "Documentation Fee", amount: 100 },
+    ]);
+  });
+
+  it("has no invoice when the shipment carries none", () => {
+    const shipment = parseTrackedShipment(payload())!;
+    expect(shipment.invoice).toBeNull();
+    expect(shipment.paymentMethod).toBeNull();
+    expect(shipment.paymentWalletAddress).toBeNull();
+    expect(shipment.paymentConfirmationAt).toBeNull();
+  });
+
+  it("reports a reported payment through to the view model", () => {
+    const shipment = parseTrackedShipment(
+      payload({
+        payment_status: "reviewing_payment",
+        payment_confirmation_at: "2026-08-02T10:00:00+00:00",
+        total_amount_due: "3000.00",
+      }),
+    )!;
+    expect(shipment.paymentStatus).toBe("reviewing_payment");
+    expect(shipment.paymentConfirmationAt).toBe("2026-08-02T10:00:00+00:00");
+  });
+
   it("passes the estimate fields through untouched for the view to format", () => {
     const shipment = parseTrackedShipment(payload())!;
     expect(shipment.estimatedDeliveryDate).toBe("2026-08-06");

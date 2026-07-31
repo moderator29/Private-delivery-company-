@@ -23,6 +23,7 @@ import {
   canWrite,
   getShipmentById,
   getShipmentEvents,
+  getShipmentInvoiceItems,
   requireAdmin,
 } from "@/lib/data/admin";
 import { absoluteUrl } from "@/lib/env";
@@ -33,7 +34,10 @@ import {
   joinParts,
 } from "@/lib/format";
 import {
+  PAYMENT_METHOD_LABELS,
   PAYMENT_STATUS_LABELS,
+  formatMoney,
+  parsePaymentMethod,
   parsePaymentStatus,
 } from "@/lib/tracking/payment";
 import { SERVICE_LEVEL_LABELS } from "@/lib/tracking/shipment";
@@ -62,6 +66,9 @@ export default async function ShipmentDetailPage({
 
   const events = await getShipmentEvents(shipment.id);
   const paymentStatus = parsePaymentStatus(shipment.payment_status);
+  const invoiceItems = paymentStatus ? await getShipmentInvoiceItems(shipment.id) : [];
+  const paymentMethod = parsePaymentMethod(shipment.payment_method);
+  const invoiceCurrency = (shipment.payment_currency ?? "USD").toUpperCase();
   const writable = canWrite(profile.role);
   const publicUrl = absoluteUrl(`/track/${shipment.tracking_id}`);
 
@@ -316,7 +323,46 @@ export default async function ShipmentDetailPage({
                     </time>
                   </DetailRow>
                 ) : null}
+                {paymentMethod ? (
+                  <DetailRow label="Payment method">
+                    {PAYMENT_METHOD_LABELS[paymentMethod]}
+                  </DetailRow>
+                ) : null}
+                {shipment.payment_wallet_address ? (
+                  <DetailRow label="Wallet address">
+                    <span className="font-mono break-all">
+                      {shipment.payment_wallet_address}
+                    </span>
+                  </DetailRow>
+                ) : null}
+                {shipment.total_amount_due !== null ? (
+                  <DetailRow label="Total amount due">
+                    {formatMoney(invoiceCurrency, Number(shipment.total_amount_due))}
+                  </DetailRow>
+                ) : null}
+                {shipment.payment_confirmation_at ? (
+                  <DetailRow label="Payment reported">
+                    <time dateTime={shipment.payment_confirmation_at}>
+                      {formatDateTime(shipment.payment_confirmation_at)}
+                    </time>
+                  </DetailRow>
+                ) : null}
               </dl>
+
+              {invoiceItems.length > 0 ? (
+                <div className="border-t border-ink-100 px-5 py-4">
+                  <p className="text-xs font-semibold tracking-[0.1em] text-ink-500 uppercase">
+                    Invoice line items
+                  </p>
+                  <dl className="mt-2">
+                    {invoiceItems.map((item) => (
+                      <DetailRow key={item.id} label={item.description}>
+                        {formatMoney(invoiceCurrency, Number(item.amount))}
+                      </DetailRow>
+                    ))}
+                  </dl>
+                </div>
+              ) : null}
             </Card>
           ) : null}
 
