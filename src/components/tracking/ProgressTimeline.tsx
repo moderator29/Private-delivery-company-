@@ -120,8 +120,11 @@ export function ProgressTimeline({ steps }: { steps: ProgressStep[] }) {
                     </time>
                   </p>
                 ) : (
-                  <p className="mt-0.5 text-xs font-medium tracking-wide text-ink-400 uppercase">
-                    Expected
+                  // No scan, so no time. A dash keeps the row aligned with the
+                  // recorded ones without printing a date nothing supports; the
+                  // label above already carries "expected" for screen readers.
+                  <p className="mt-0.5 text-sm text-ink-400" aria-hidden="true">
+                    —
                   </p>
                 )}
 

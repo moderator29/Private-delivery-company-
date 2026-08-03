@@ -33,6 +33,8 @@ import type { TrackedShipment } from "@/lib/tracking/shipment";
 import {
   STATUS_META,
   isMoving,
+  isPaymentHold,
+  isUnscheduled,
   needsAttention,
   type StatusTone,
 } from "@/lib/tracking/status";
@@ -48,6 +50,9 @@ export function TrackingResult({
   const meta = STATUS_META[shipment.status];
   const shareUrl = absoluteUrl(`/track/${shipment.trackingId}`);
   const delivered = shipment.status === "delivered";
+  // A held shipment carries no schedule, so every forward looking date and time
+  // on this page renders as a dash rather than a figure nobody can stand behind.
+  const unscheduled = isUnscheduled(shipment.status);
 
   // The recipient payment flow. The email step runs while an address is being
   // collected; once it is in (email_received), and from then on, the invoice and
@@ -100,7 +105,13 @@ export function TrackingResult({
         </Card>
       </div>
 
-      {needsAttention(shipment.status) ? (
+      {isPaymentHold(shipment.status) ? (
+        <Alert tone="warning" title="Delivery on hold — waiting on payment">
+          The outstanding balance on the invoice below has not been received, so
+          the package is held and no delivery date is scheduled. Delivery
+          resumes once the payment is confirmed.
+        </Alert>
+      ) : needsAttention(shipment.status) ? (
         <Alert
           tone="warning"
           title={`This shipment is marked ${meta.label.toLowerCase()}`}
@@ -227,13 +238,28 @@ export function TrackingResult({
                   </DetailRow>
                 ) : null}
                 <DetailRow label="Status" tone={meta.tone}>
-                  {meta.label}
+                  <span className={cn(unscheduled && "font-bold")}>
+                    {meta.label}
+                  </span>
                 </DetailRow>
                 {delivered && shipment.deliveredAt ? (
-                  <DetailRow label="Delivered" tone="delivered">
+                  <DetailRow
+                    label="Delivered"
+                    tone="delivered"
+                    testId="delivery-estimate"
+                  >
                     <time dateTime={shipment.deliveredAt}>
                       {formatDateTime(shipment.deliveredAt)}
                     </time>
+                  </DetailRow>
+                ) : unscheduled ? (
+                  <DetailRow
+                    label="Estimated Delivery"
+                    tone="attention"
+                    testId="delivery-estimate"
+                  >
+                    <span className="block font-bold">On Hold</span>
+                    <span className="block text-ink-400">—</span>
                   </DetailRow>
                 ) : (
                   <DetailRow
@@ -241,6 +267,7 @@ export function TrackingResult({
                     tone={
                       needsAttention(shipment.status) ? "neutral" : "delivered"
                     }
+                    testId="delivery-estimate"
                   >
                     <span className="block">
                       {formatCalendarDate(shipment.estimatedDeliveryDate) ??
@@ -291,7 +318,8 @@ export function TrackingResult({
               : "Transit Time"
           }
         >
-          {formatDaysLabel(shipment.transitDays) ?? "Not yet picked up"}
+          {formatDaysLabel(shipment.transitDays) ??
+            (shipment.shippedAt ? "—" : "Not yet picked up")}
         </SummaryStat>
         <SummaryStat icon={<BoxIcon className="size-5" />} label="Tracking ID">
           <span data-numeric>{formatTrackingId(shipment.trackingId)}</span>
@@ -358,7 +386,9 @@ function StatusPulse({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-2 text-[15px] font-semibold",
+        // Bold, not semibold: this line is the answer to the only question the
+        // page is asked, and it has to read as such next to the h1.
+        "inline-flex items-center gap-2 text-[15px] font-bold text-balance",
         style.text,
       )}
     >
@@ -435,16 +465,20 @@ function DetailRow({
   label,
   children,
   tone,
+  testId,
 }: {
   label: string;
   children: ReactNode;
   /** Omitted for plain facts; a status tone for anything that carries meaning. */
   tone?: StatusTone;
+  /** Set only where a test needs to read one row rather than the whole card. */
+  testId?: string;
 }) {
   return (
     <div className="flex items-start justify-between gap-4 border-b border-ink-100 py-3 last:border-b-0">
       <dt className="text-sm text-ink-500">{label}</dt>
       <dd
+        data-testid={testId}
         className={cn(
           "text-right text-sm font-semibold",
           tone ? TONE_STYLES[tone].text : "text-ink-800",

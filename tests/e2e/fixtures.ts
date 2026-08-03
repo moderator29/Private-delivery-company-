@@ -14,6 +14,7 @@ export const TRACKING_DELAYED = "STDE1AYED123US";
 export const TRACKING_AWAITING_EMAIL = "STEMA1123456US";
 export const TRACKING_INVOICE = "STBTCPAY7788US";
 export const TRACKING_INVOICE_SUBMIT = "STPAYSENT990US";
+export const TRACKING_PAYMENT_HOLD = "STH01DPAY990US";
 export const TRACKING_UNKNOWN = "STZZ999999ZZUS";
 
 /** Every page a visitor can reach without a tracking number or an account. */

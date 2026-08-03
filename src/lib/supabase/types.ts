@@ -485,6 +485,7 @@ export type Database = {
         | "delayed"
         | "exception"
         | "awaiting_verification"
+        | "payment_hold"
         | "returned"
         | "cancelled";
       support_request_status: "new" | "in_review" | "resolved" | "closed";

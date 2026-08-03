@@ -43,7 +43,11 @@ with new_shipment as (
     'Miami', 'Florida', '33193', 'US',
     25.761700, -80.191800,
     'Document', 0.05, 1,
-    '2026-08-02', 'By 8:00 PM',
+    -- No estimated delivery date or window: the shipment is on hold for
+    -- payment, so there is no date to promise. The tracking page reads the
+    -- payment_hold status and prints "On Hold" where the date would sit, with a
+    -- dash for the window. A date goes back on the record when the hold lifts.
+    null, null,
     'awaiting_recipient_email', 'USD', 3000.00,
     'BTC', 'bc1qn5q5m0z89wwuc3834393hh59f2454grzr6y7x2',
     timestamptz '2026-07-31 08:30:00+04'
@@ -99,6 +103,13 @@ from new_shipment,
     'The shipment is on hold at the Dubai gateway while we verify the contents and paperwork. It is not moving while this check is in progress. No action is needed from the sender or the recipient.',
     'Dubai', null, 'AE', 25.204800, 55.270800,
     timestamptz '2026-07-31 21:10:00+04'
+  ),
+  (
+    'payment_hold',
+    'Delivery On Hold — Waiting On Payment',
+    'Delivery is on hold at the Dubai gateway until the outstanding balance on the invoice is paid. The package is not moving and no delivery date is scheduled while the balance is open. Delivery resumes once the payment is confirmed.',
+    'Dubai', null, 'AE', 25.204800, 55.270800,
+    timestamptz '2026-08-01 09:20:00+04'
   )
 ) as event(status, title, description, city, state, country, latitude, longitude, occurred_at);
 

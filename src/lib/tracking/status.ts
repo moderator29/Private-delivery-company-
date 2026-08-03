@@ -18,6 +18,7 @@ export const SHIPMENT_STATUSES = [
   "delayed",
   "exception",
   "awaiting_verification",
+  "payment_hold",
   "returned",
   "cancelled",
 ] as const;
@@ -99,6 +100,12 @@ export const STATUS_META: Record<ShipmentStatus, StatusMeta> = {
       "The package is on hold while we verify the shipment. It is not moving until that is complete.",
     tone: "attention",
   },
+  payment_hold: {
+    label: "Delivery On Hold — Waiting On Payment",
+    description:
+      "Delivery is on hold until the outstanding balance on the invoice is paid. The package is not moving while payment is outstanding.",
+    tone: "attention",
+  },
   returned: {
     label: "Returned to Sender",
     description: "The package is on its way back to the sender.",
@@ -130,7 +137,27 @@ const ATTENTION_STATUSES = new Set<ShipmentStatus>([
   "delayed",
   "exception",
   "awaiting_verification",
+  "payment_hold",
 ]);
+
+/**
+ * Statuses where no delivery date can honestly be shown.
+ *
+ * A held shipment has no schedule: it resumes when the hold is lifted, not on a
+ * date anyone can name today. The tracking page reads this to print "On Hold"
+ * where the delivery date sits, and a dash for every time that would otherwise
+ * be a promise.
+ */
+const UNSCHEDULED_STATUSES = new Set<ShipmentStatus>(["payment_hold"]);
+
+export function isUnscheduled(status: ShipmentStatus): boolean {
+  return UNSCHEDULED_STATUSES.has(status);
+}
+
+/** True only for a shipment stopped because an invoice is unpaid. */
+export function isPaymentHold(status: ShipmentStatus): boolean {
+  return status === "payment_hold";
+}
 
 export function isClosed(status: ShipmentStatus): boolean {
   return CLOSED_STATUSES.has(status);
@@ -193,6 +220,7 @@ export function journeyProgress(status: ShipmentStatus): number {
     case "delayed":
     case "exception":
     case "awaiting_verification":
+    case "payment_hold":
     case "returned":
     case "cancelled":
       // Position is unknown along the normal path, so sit at the midpoint

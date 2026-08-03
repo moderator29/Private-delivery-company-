@@ -100,6 +100,7 @@ const ATTENTION_STATUSES: ShipmentStatus[] = [
   "exception",
   "delivery_attempted",
   "awaiting_verification",
+  "payment_hold",
 ];
 const MOVING_STATUSES: ShipmentStatus[] = [
   "picked_up",

@@ -8,7 +8,9 @@ import {
   isClosed,
   isDelivered,
   isMoving,
+  isPaymentHold,
   isShipmentStatus,
+  isUnscheduled,
   journeyProgress,
   needsAttention,
   type ProgressEventInput,
@@ -382,5 +384,62 @@ describe("awaiting_verification", () => {
     expect(STATUS_META.awaiting_verification.description).toContain(
       "not moving",
     );
+  });
+});
+
+/**
+ * The payment hold. Distinct from awaiting_verification because the cause, the
+ * owner and the way out are all different: something is owed, the recipient
+ * owns clearing it, and the package moves again once it is confirmed.
+ */
+describe("payment_hold", () => {
+  it("raises attention without claiming the package is moving", () => {
+    expect(needsAttention("payment_hold")).toBe(true);
+    expect(isMoving("payment_hold")).toBe(false);
+  });
+
+  it("is a hold, not an ending, so the rest of the journey still projects", () => {
+    expect(isClosed("payment_hold")).toBe(false);
+
+    const steps = buildProgressSteps(
+      [
+        {
+          status: "payment_hold",
+          title: "Delivery On Hold — Waiting On Payment",
+          description: null,
+          occurredAt: "2026-08-01T05:20:00Z",
+          locationLabel: "Dubai",
+        },
+      ],
+      "payment_hold",
+      "Miami, USA",
+    );
+
+    expect(steps.some((step) => step.projected)).toBe(true);
+    expect(steps.at(-1)?.status).toBe("delivered");
+  });
+
+  it("does not imply progress along the normal path", () => {
+    expect(journeyProgress("payment_hold")).toBe(0.5);
+  });
+
+  it("names the hold and its cause in the status itself", () => {
+    expect(STATUS_META.payment_hold.label).toBe(
+      "Delivery On Hold — Waiting On Payment",
+    );
+    expect(STATUS_META.payment_hold.description).toContain("not moving");
+  });
+
+  it("carries no schedule, so the page prints a hold rather than a date", () => {
+    expect(isUnscheduled("payment_hold")).toBe(true);
+    expect(isPaymentHold("payment_hold")).toBe(true);
+  });
+
+  it("leaves every other status schedulable", () => {
+    for (const status of SHIPMENT_STATUSES) {
+      if (status === "payment_hold") continue;
+      expect(isUnscheduled(status)).toBe(false);
+      expect(isPaymentHold(status)).toBe(false);
+    }
   });
 });

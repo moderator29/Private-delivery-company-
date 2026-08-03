@@ -76,6 +76,13 @@ const STATUS_GUIDE: Array<{ status: ShipmentStatus; whatItMeans: string; whatToD
       "Read the reason on the timeline. Most exceptions need an answer from the sender or recipient, so contact us promptly.",
   },
   {
+    status: "payment_hold",
+    whatItMeans:
+      "An amount is outstanding on the shipment and the package is held until it is paid. Nothing moves and no delivery date is scheduled while the balance is open.",
+    whatToDo:
+      "Pay the invoice shown on your tracking page, then report the payment there. Delivery resumes once we confirm it.",
+  },
+  {
     status: "returned",
     whatItMeans:
       "The shipment is on its way back to the sender, usually after repeated failed deliveries or a customs refusal.",
@@ -135,8 +142,8 @@ export default function SupportPage() {
 
         <p className="mt-8 text-sm text-ink-500">
           {STATUS_GUIDE.length} of the {Object.keys(STATUS_META).length} statuses in our system are
-          customer facing. The remaining one, shipment created, exists only before a waybill is
-          issued and is not shown on a public tracking page.
+          customer facing. The rest are internal handling states, such as the one a shipment carries
+          before a waybill is issued, and are not shown on a public tracking page.
         </p>
       </Container>
 

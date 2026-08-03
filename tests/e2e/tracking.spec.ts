@@ -95,22 +95,21 @@ test.describe("shipment progress", () => {
     expect(stamps).toEqual(sorted);
   });
 
-  test("labels future milestones as expected rather than dating them", async ({
-    page,
-  }) => {
+  test("dashes future milestones rather than dating them", async ({ page }) => {
     await page.goto(`/track/${TRACKING_IN_TRANSIT}`);
 
     const progress = page
       .locator("ol")
       .filter({ hasText: "Shipment Information Received" });
-    // Three milestones remain after "In Transit", each shown without a time.
-    await expect(progress.getByText("Expected", { exact: true })).toHaveCount(
-      3,
-    );
+    // Three milestones remain after "In Transit". Each shows a dash where a
+    // recorded scan shows its time, because there is no time to show.
+    await expect(progress.getByText("—", { exact: true })).toHaveCount(3);
 
     const projected = progress.locator("> li").nth(6);
-    await expect(projected).toContainText("Expected");
+    await expect(projected).toContainText("—");
     await expect(projected.locator("time")).toHaveCount(0);
+    // The dash is decorative; the fact stays on the label for screen readers.
+    await expect(projected).toContainText("expected, not yet scanned");
   });
 });
 

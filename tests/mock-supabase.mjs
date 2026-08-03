@@ -43,6 +43,8 @@ export const TRACKING_INVOICE = "STBTCPAY7788US";
  * the stateful test cannot break them.
  */
 export const TRACKING_INVOICE_SUBMIT = "STPAYSENT990US";
+/** Invoice unpaid and the shipment stopped for it: no delivery date exists. */
+export const TRACKING_PAYMENT_HOLD = "STH01DPAY990US";
 /** Well formed, deliberately absent from the fixtures. */
 export const TRACKING_UNKNOWN = "STZZ999999ZZUS";
 
@@ -409,6 +411,32 @@ const INVOICE_SUBMIT = {
   invoice_items: INVOICE_DUE.invoice_items.map((i) => ({ ...i })),
 };
 
+/**
+ * The invoice went unpaid long enough that the shipment was stopped for it.
+ *
+ * The point of the fixture is the absence: no estimated_delivery_date and no
+ * window, because a held shipment has no schedule. The tracking page has to
+ * print the hold and a dash there rather than inventing a date.
+ */
+const PAYMENT_HOLD = {
+  ...INVOICE_DUE,
+  tracking_id: TRACKING_PAYMENT_HOLD,
+  status: "payment_hold",
+  estimated_delivery_date: null,
+  estimated_delivery_window: null,
+  updated_at: "2026-08-01T05:20:00+00:00",
+  invoice_items: INVOICE_DUE.invoice_items.map((i) => ({ ...i })),
+  events: [
+    ...INVOICE_DUE.events.map((e) => ({ ...e })),
+    event(
+      "payment_hold",
+      "Delivery On Hold — Waiting On Payment",
+      "Delivery is on hold at the Dubai gateway until the outstanding balance on the invoice is paid. The package is not moving and no delivery date is scheduled while the balance is open.",
+      "2026-08-01T05:20:00+00:00",
+    ),
+  ],
+};
+
 const SHIPMENTS = new Map([
   [TRACKING_IN_TRANSIT, IN_TRANSIT],
   [TRACKING_DELIVERED, DELIVERED],
@@ -416,6 +444,7 @@ const SHIPMENTS = new Map([
   [TRACKING_AWAITING_EMAIL, AWAITING_EMAIL],
   [TRACKING_INVOICE, INVOICE_DUE],
   [TRACKING_INVOICE_SUBMIT, INVOICE_SUBMIT],
+  [TRACKING_PAYMENT_HOLD, PAYMENT_HOLD],
 ]);
 
 /* ------------------------------------------------------------------------- */
