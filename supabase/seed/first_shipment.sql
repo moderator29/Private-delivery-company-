@@ -116,8 +116,8 @@ from new_shipment,
   ),
   (
     'in_transit',
-    'Hold Released — In Transit',
-    'The payment hold has been lifted and the shipment is moving again on the linehaul to the destination country.',
+    'Payment Received — In Transit',
+    'The outstanding balance on the invoice has been paid and confirmed. The shipment is moving again on the linehaul to the destination country.',
     'Dubai', null, 'AE', 25.204800, 55.270800,
     timestamptz '2026-08-09 18:26:00+04'
   )
