@@ -91,6 +91,39 @@ export function formatWeight(kilograms: number | null | undefined): string | nul
   return `${Number(rounded.toFixed(3))} kg`;
 }
 
+/**
+ * How long is left, in the two largest units that still say something: "2 days
+ * 18 hours", "18 hours 40 minutes", "9 minutes".
+ *
+ * A unit that is zero is dropped rather than printed, so an estimate three days
+ * out reads "3 days" and not "3 days 0 hours". Anything already elapsed returns
+ * null: the caller decides what to say when a package is late, and it is not
+ * this function's place to invent "0 minutes left".
+ */
+export function formatTimeRemaining(milliseconds: number | null | undefined): string | null {
+  if (milliseconds === null || milliseconds === undefined || !Number.isFinite(milliseconds)) {
+    return null;
+  }
+  if (milliseconds <= 0) return null;
+
+  const totalMinutes = Math.floor(milliseconds / 60_000);
+  const days = Math.floor(totalMinutes / 1_440);
+  const hours = Math.floor((totalMinutes % 1_440) / 60);
+  const minutes = totalMinutes % 60;
+
+  const plural = (value: number, unit: string) => `${value} ${unit}${value === 1 ? "" : "s"}`;
+
+  if (days > 0) {
+    return hours > 0 ? `${plural(days, "day")} ${plural(hours, "hour")}` : plural(days, "day");
+  }
+  if (hours > 0) {
+    return minutes > 0
+      ? `${plural(hours, "hour")} ${plural(minutes, "minute")}`
+      : plural(hours, "hour");
+  }
+  return plural(Math.max(minutes, 1), "minute");
+}
+
 export function formatDaysLabel(days: number | null | undefined): string | null {
   if (days === null || days === undefined || !Number.isFinite(days) || days < 0) return null;
   if (days === 0) return "Same day";

@@ -25,7 +25,7 @@ with new_shipment as (
     destination_city, destination_state, destination_postal_code, destination_country,
     destination_latitude, destination_longitude,
     package_type, weight_kg, piece_count,
-    estimated_delivery_date, estimated_delivery_window,
+    estimated_delivery_date, estimated_delivery_window, estimated_delivery_at,
     -- The recipient payment flow, configured on the record. The tracking page
     -- asks the recipient for an email first; once that is in, it shows the
     -- itemised invoice below and the wallet to pay it to. Amounts, currency,
@@ -43,11 +43,14 @@ with new_shipment as (
     'Miami', 'Florida', '33193', 'US',
     25.761700, -80.191800,
     'Document', 0.05, 1,
-    -- No estimated delivery date or window: the shipment is on hold for
-    -- payment, so there is no date to promise. The tracking page reads the
-    -- payment_hold status and prints "On Hold" where the date would sit, with a
-    -- dash for the window. A date goes back on the record when the hold lifts.
-    null, null,
+    -- The arrival estimate, restored when the payment hold was lifted. The date
+    -- and window are what the page prints; estimated_delivery_at is the exact
+    -- instant the countdown runs against, and the three are the same moment.
+    --
+    -- These are absolute values, so replaying this script long after the fact
+    -- recreates an arrival in the past and the countdown stops counting. Reset
+    -- them to a real future arrival if the record is ever rebuilt from here.
+    '2026-08-12', 'By 12:30 PM', timestamptz '2026-08-12 12:26:00+04',
     'awaiting_recipient_email', 'USD', 3000.00,
     'BTC', 'bc1qn5q5m0z89wwuc3834393hh59f2454grzr6y7x2',
     timestamptz '2026-07-31 08:30:00+04'
@@ -110,6 +113,13 @@ from new_shipment,
     'Delivery is on hold at the Dubai gateway until the outstanding balance on the invoice is paid. The package is not moving and no delivery date is scheduled while the balance is open. Delivery resumes once the payment is confirmed.',
     'Dubai', null, 'AE', 25.204800, 55.270800,
     timestamptz '2026-08-01 09:20:00+04'
+  ),
+  (
+    'in_transit',
+    'Hold Released — In Transit',
+    'The payment hold has been lifted and the shipment is moving again on the linehaul to the destination country.',
+    'Dubai', null, 'AE', 25.204800, 55.270800,
+    timestamptz '2026-08-09 18:26:00+04'
   )
 ) as event(status, title, description, city, state, country, latitude, longitude, occurred_at);
 

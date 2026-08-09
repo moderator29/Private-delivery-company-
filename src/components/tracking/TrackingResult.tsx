@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { ArrivalCountdown } from "@/components/tracking/ArrivalCountdown";
 import { CopyButton } from "@/components/tracking/CopyButton";
 import { InvoiceCard } from "@/components/tracking/InvoiceCard";
 import { ParcelIllustration } from "@/components/tracking/ParcelIllustration";
@@ -54,6 +55,18 @@ export function TrackingResult({
   // on this page renders as a dash rather than a figure nobody can stand behind.
   const unscheduled = isUnscheduled(shipment.status);
 
+  // The countdown is a claim that the package is coming, so it is gated on the
+  // package actually moving. A delayed or held shipment has an estimate nobody
+  // stands behind, and counting down to it would dress that up as a promise.
+  // The instant is stamped here, on the server, and handed to the client so
+  // hydration recomputes the same first value rather than a different one.
+  const showCountdown = isMoving(shipment.status) && Boolean(shipment.estimatedDeliveryAt);
+  const renderedAt = new Date().toISOString();
+  const estimateLabel =
+    shipment.estimatedDeliveryDate && shipment.estimatedDeliveryWindow
+      ? `${formatCalendarDate(shipment.estimatedDeliveryDate)} · ${shipment.estimatedDeliveryWindow}`
+      : formatDateTime(shipment.estimatedDeliveryAt);
+
   // The recipient payment flow. The email step runs while an address is being
   // collected; once it is in (email_received), and from then on, the invoice and
   // payment step take over. "reviewing_payment" is still past the email step, so
@@ -104,6 +117,14 @@ export function TrackingResult({
           />
         </Card>
       </div>
+
+      {showCountdown && shipment.estimatedDeliveryAt ? (
+        <ArrivalCountdown
+          arrivesAt={shipment.estimatedDeliveryAt}
+          renderedAt={renderedAt}
+          estimateLabel={estimateLabel}
+        />
+      ) : null}
 
       {isPaymentHold(shipment.status) ? (
         <Alert tone="warning" title="Delivery on hold — waiting on payment">

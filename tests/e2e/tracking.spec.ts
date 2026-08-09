@@ -50,8 +50,28 @@ test.describe("tracking a valid shipment", () => {
   test("summarises the package and the delivery estimate", async ({ page }) => {
     await expect(page.getByText("Standard Delivery")).toBeVisible();
     await expect(page.getByText("0.05 kg")).toBeVisible();
-    await expect(page.getByText("August 6, 2026")).toBeVisible();
-    await expect(page.getByText("By 8:00 PM")).toBeVisible();
+    // The arrival is relative to now in the fixture, so the date is matched by
+    // shape rather than by value: pinning it would date the test.
+    // The window now reads twice on the page, once in the countdown's estimate
+    // line, so this is scoped to the detail row it is asserting about.
+    const estimate = page.getByTestId("delivery-estimate");
+    await expect(estimate).toContainText(/[A-Z][a-z]+ \d{1,2}, \d{4}/);
+    await expect(estimate).toContainText("By 12:30 PM");
+  });
+
+  test("counts down to the arrival while the package is moving", async ({
+    page,
+  }) => {
+    const countdown = page.getByTestId("arrival-countdown");
+    await expect(countdown).toBeVisible();
+    await expect(countdown).toContainText("On its way");
+    // The fixture arrives two days and eighteen hours out, so this is the exact
+    // reading, not a shape match. A minute of clock drift between the fixture
+    // and the render lands on 17 hours, which is still correct and is why the
+    // hour is allowed to be either.
+    await expect(page.getByTestId("time-remaining")).toHaveText(
+      /^2 days 1[78] hours$/,
+    );
   });
 });
 

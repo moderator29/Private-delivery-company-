@@ -8,6 +8,7 @@ import {
   formatDateTime,
   formatDaysLabel,
   formatTime,
+  formatTimeRemaining,
   formatWeight,
   joinParts,
 } from "@/lib/format";
@@ -155,5 +156,49 @@ describe("joinParts", () => {
   it("returns an empty string when nothing survives", () => {
     expect(joinParts([null, undefined, "  "])).toBe("");
     expect(joinParts([])).toBe("");
+  });
+});
+
+describe("formatTimeRemaining", () => {
+  const minutes = (n: number) => n * 60_000;
+  const hours = (n: number) => n * 3_600_000;
+  const days = (n: number) => n * 86_400_000;
+
+  it("reads the two largest units that still say something", () => {
+    expect(formatTimeRemaining(days(2) + hours(18))).toBe("2 days 18 hours");
+    expect(formatTimeRemaining(hours(18) + minutes(40))).toBe("18 hours 40 minutes");
+    expect(formatTimeRemaining(minutes(9))).toBe("9 minutes");
+  });
+
+  it("drops a unit that is zero rather than printing it", () => {
+    expect(formatTimeRemaining(days(3))).toBe("3 days");
+    expect(formatTimeRemaining(hours(6))).toBe("6 hours");
+  });
+
+  it("singularises a unit of one", () => {
+    expect(formatTimeRemaining(days(1) + hours(1))).toBe("1 day 1 hour");
+    expect(formatTimeRemaining(minutes(1))).toBe("1 minute");
+  });
+
+  it("ignores seconds rather than rounding a minute up out of them", () => {
+    expect(formatTimeRemaining(days(2) + hours(18) + 59_000)).toBe("2 days 18 hours");
+  });
+
+  it("never counts past zero, so a late shipment gets no invented figure", () => {
+    // The caller decides what to say once the estimate has passed. Saying
+    // "0 minutes left" would be a promise the record cannot support.
+    expect(formatTimeRemaining(0)).toBeNull();
+    expect(formatTimeRemaining(-hours(3))).toBeNull();
+  });
+
+  it("shows a minute rather than nothing for the last sliver of time", () => {
+    expect(formatTimeRemaining(20_000)).toBe("1 minute");
+  });
+
+  it("returns null for anything that is not a usable number", () => {
+    expect(formatTimeRemaining(null)).toBeNull();
+    expect(formatTimeRemaining(undefined)).toBeNull();
+    expect(formatTimeRemaining(Number.NaN)).toBeNull();
+    expect(formatTimeRemaining(Number.POSITIVE_INFINITY)).toBeNull();
   });
 });

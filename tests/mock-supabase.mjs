@@ -89,6 +89,27 @@ function event(
   };
 }
 
+/**
+ * How far out the in-flight fixture's arrival sits: two days and eighteen
+ * hours, which is what the live record carries.
+ *
+ * Computed from the clock rather than hardcoded, and this is the one place in
+ * this file where that is right. Every other value is fixed so a test can
+ * assert it exactly, but an arrival is only meaningful relative to now: pinned
+ * to a date, it would quietly slide into the past and the countdown under test
+ * would stop counting.
+ */
+const ARRIVES_IN_MS = (2 * 24 + 18) * 3_600_000;
+const ARRIVAL_INSTANT = new Date(Date.now() + ARRIVES_IN_MS);
+
+/** The arrival's calendar date in the display timezone, as YYYY-MM-DD. */
+const ARRIVAL_DATE = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Dubai",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+}).format(ARRIVAL_INSTANT);
+
 /** The live Dubai to Miami shipment, matching supabase/seed/first_shipment.sql. */
 const IN_TRANSIT = {
   tracking_id: TRACKING_IN_TRANSIT,
@@ -114,8 +135,9 @@ const IN_TRANSIT = {
   origin: DUBAI,
   destination: MIAMI,
   current_location_label: "Dubai",
-  estimated_delivery_date: "2026-08-06",
-  estimated_delivery_window: "By 8:00 PM",
+  estimated_delivery_date: ARRIVAL_DATE,
+  estimated_delivery_window: "By 12:30 PM",
+  estimated_delivery_at: ARRIVAL_INSTANT.toISOString(),
   shipped_at: "2026-07-31T07:15:00+00:00",
   delivered_at: null,
   package: {
@@ -192,6 +214,7 @@ const DELIVERED = {
   current_location_label: "Miami, Florida",
   estimated_delivery_date: "2026-08-04",
   estimated_delivery_window: "By 8:00 PM",
+  estimated_delivery_at: null,
   shipped_at: "2026-07-30T07:10:00+00:00",
   delivered_at: "2026-08-03T14:25:00+00:00",
   package: {
@@ -424,6 +447,7 @@ const PAYMENT_HOLD = {
   status: "payment_hold",
   estimated_delivery_date: null,
   estimated_delivery_window: null,
+  estimated_delivery_at: null,
   updated_at: "2026-08-01T05:20:00+00:00",
   invoice_items: INVOICE_DUE.invoice_items.map((i) => ({ ...i })),
   events: [

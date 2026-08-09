@@ -104,6 +104,11 @@ export const trackShipmentPayloadSchema = z.object({
   current_location_label: nullableText,
   estimated_delivery_date: nullableText,
   estimated_delivery_window: nullableText,
+  /**
+   * Optional so a payload from a database that predates migration 0014 still
+   * parses. Absent means no arrival instant is committed, so no countdown.
+   */
+  estimated_delivery_at: nullableText,
   shipped_at: nullableText,
   delivered_at: nullableText,
   package: z.object({
@@ -206,6 +211,8 @@ export interface TrackedShipment {
   currentLocationLabel: string | null;
   estimatedDeliveryDate: string | null;
   estimatedDeliveryWindow: string | null;
+  /** Exact expected arrival, when one is committed. Drives the countdown. */
+  estimatedDeliveryAt: string | null;
   shippedAt: string | null;
   deliveredAt: string | null;
   package: PackageDetails;
@@ -409,6 +416,7 @@ export function toTrackedShipment(payload: TrackShipmentPayload): TrackedShipmen
     currentLocationLabel: payload.current_location_label,
     estimatedDeliveryDate: payload.estimated_delivery_date,
     estimatedDeliveryWindow: payload.estimated_delivery_window,
+    estimatedDeliveryAt: payload.estimated_delivery_at,
     shippedAt: payload.shipped_at,
     deliveredAt: payload.delivered_at,
     package: {

@@ -223,6 +223,7 @@ export type Database = {
           destination_longitude: number | null;
           destination_postal_code: string | null;
           destination_state: string | null;
+          estimated_delivery_at: string | null;
           estimated_delivery_date: string | null;
           estimated_delivery_window: string | null;
           height_cm: number | null;
@@ -278,6 +279,7 @@ export type Database = {
           destination_longitude?: number | null;
           destination_postal_code?: string | null;
           destination_state: string | null;
+          estimated_delivery_at?: string | null;
           estimated_delivery_date?: string | null;
           estimated_delivery_window?: string | null;
           height_cm?: number | null;
@@ -333,6 +335,7 @@ export type Database = {
           destination_longitude?: number | null;
           destination_postal_code?: string | null;
           destination_state?: string | null;
+          estimated_delivery_at?: string | null;
           estimated_delivery_date?: string | null;
           estimated_delivery_window?: string | null;
           height_cm?: number | null;
