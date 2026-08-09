@@ -17,6 +17,7 @@ export const PAYMENT_STATUSES = [
   "awaiting_recipient_email",
   "email_received",
   "reviewing_payment",
+  "paid",
 ] as const;
 
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
@@ -27,6 +28,7 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   awaiting_recipient_email: "Awaiting the recipient's email address",
   email_received: "Email address received",
   reviewing_payment: "Payment reported, under review",
+  paid: "Payment received",
 };
 
 export function parsePaymentStatus(value: unknown): PaymentStatus | null {

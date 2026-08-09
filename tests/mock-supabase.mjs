@@ -45,6 +45,8 @@ export const TRACKING_INVOICE = "STBTCPAY7788US";
 export const TRACKING_INVOICE_SUBMIT = "STPAYSENT990US";
 /** Invoice unpaid and the shipment stopped for it: no delivery date exists. */
 export const TRACKING_PAYMENT_HOLD = "STH01DPAY990US";
+/** Invoice settled: the receipt replaces the invoice, wallet and pay button. */
+export const TRACKING_PAID = "STPA1DFV1199US";
 /** Well formed, deliberately absent from the fixtures. */
 export const TRACKING_UNKNOWN = "STZZ999999ZZUS";
 
@@ -157,6 +159,7 @@ const IN_TRANSIT = {
   payment_currency: null,
   total_amount_due: null,
   payment_confirmation_at: null,
+  payment_received_at: null,
   invoice_items: [],
   created_at: "2026-07-30T04:30:00+00:00",
   updated_at: "2026-08-01T06:45:00+00:00",
@@ -398,6 +401,7 @@ const INVOICE_DUE = {
   payment_currency: "USD",
   total_amount_due: "3000.00",
   payment_confirmation_at: null,
+  payment_received_at: null,
   invoice_items: [
     { description: "Customs Clearance Fee", amount: "1500.00" },
     { description: "Import Processing Fee", amount: "1400.00" },
@@ -461,6 +465,35 @@ const PAYMENT_HOLD = {
   ],
 };
 
+/**
+ * Paid in full, and moving because of it.
+ *
+ * The fixture exists to pin down what a settled shipment must NOT show: no
+ * wallet address and no pay button, because either would invite a second
+ * payment for a bill already cleared.
+ */
+const PAID = {
+  ...INVOICE_DUE,
+  tracking_id: TRACKING_PAID,
+  status: "in_transit",
+  payment_status: "paid",
+  payment_received_at: "2026-08-09T14:26:01+00:00",
+  payment_confirmation_at: "2026-08-09T13:40:00+00:00",
+  estimated_delivery_date: ARRIVAL_DATE,
+  estimated_delivery_window: "By 12:30 PM",
+  estimated_delivery_at: ARRIVAL_INSTANT.toISOString(),
+  invoice_items: INVOICE_DUE.invoice_items.map((i) => ({ ...i })),
+  events: [
+    ...INVOICE_DUE.events.map((e) => ({ ...e })),
+    event(
+      "in_transit",
+      "Payment Received — In Transit",
+      "The outstanding balance on the invoice has been paid and confirmed. The shipment is moving again on the linehaul to the destination country.",
+      "2026-08-09T14:26:01+00:00",
+    ),
+  ],
+};
+
 const SHIPMENTS = new Map([
   [TRACKING_IN_TRANSIT, IN_TRANSIT],
   [TRACKING_DELIVERED, DELIVERED],
@@ -469,6 +502,7 @@ const SHIPMENTS = new Map([
   [TRACKING_INVOICE, INVOICE_DUE],
   [TRACKING_INVOICE_SUBMIT, INVOICE_SUBMIT],
   [TRACKING_PAYMENT_HOLD, PAYMENT_HOLD],
+  [TRACKING_PAID, PAID],
 ]);
 
 /* ------------------------------------------------------------------------- */
@@ -886,6 +920,7 @@ const SHIPMENT_DEFAULTS = {
   payment_method: null,
   payment_wallet_address: null,
   payment_confirmation_at: null,
+  payment_received_at: null,
   estimated_delivery_window: "By 8:00 PM",
   internal_notes: null,
   current_location_label: "Dubai",

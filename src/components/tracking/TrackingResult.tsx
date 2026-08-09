@@ -4,6 +4,7 @@ import { ArrivalCountdown } from "@/components/tracking/ArrivalCountdown";
 import { CopyButton } from "@/components/tracking/CopyButton";
 import { InvoiceCard } from "@/components/tracking/InvoiceCard";
 import { ParcelIllustration } from "@/components/tracking/ParcelIllustration";
+import { PaymentReceipt } from "@/components/tracking/PaymentReceipt";
 import { ProgressTimeline } from "@/components/tracking/ProgressTimeline";
 import { RatingCard } from "@/components/tracking/RatingCard";
 import { RecipientEmailCard } from "@/components/tracking/RecipientEmailCard";
@@ -79,8 +80,15 @@ export function TrackingResult({
     shipment.paymentStatus === "email_received" ||
     shipment.paymentStatus === "reviewing_payment";
   // The invoice shows only after the address is in, and only when the shipment
-  // actually carries one.
-  const showInvoice = emailReceived && shipment.invoice !== null;
+  // actually carries one. Once payment is confirmed received the invoice is
+  // replaced by the receipt, never shown alongside it: a settled shipment that
+  // still displays a wallet and a pay button is inviting a second payment.
+  const settled = shipment.paymentStatus === "paid";
+  const showInvoice = emailReceived && !settled && shipment.invoice !== null;
+  const showReceipt = settled && shipment.invoice !== null;
+  const paymentMethodLabel = shipment.paymentMethod
+    ? PAYMENT_METHOD_LABELS[shipment.paymentMethod]
+    : "Bitcoin (BTC)";
 
   return (
     <div className="flex flex-col gap-5">
@@ -154,13 +162,17 @@ export function TrackingResult({
         <InvoiceCard
           trackingId={shipment.trackingId}
           invoice={shipment.invoice}
-          methodLabel={
-            shipment.paymentMethod
-              ? PAYMENT_METHOD_LABELS[shipment.paymentMethod]
-              : "Bitcoin (BTC)"
-          }
+          methodLabel={paymentMethodLabel}
           walletAddress={shipment.paymentWalletAddress}
           submitted={shipment.paymentStatus === "reviewing_payment"}
+        />
+      ) : null}
+
+      {showReceipt && shipment.invoice ? (
+        <PaymentReceipt
+          invoice={shipment.invoice}
+          methodLabel={paymentMethodLabel}
+          receivedAt={shipment.paymentReceivedAt}
         />
       ) : null}
 

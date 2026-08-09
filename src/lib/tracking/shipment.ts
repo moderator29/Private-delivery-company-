@@ -136,6 +136,11 @@ export const trackShipmentPayloadSchema = z.object({
   payment_currency: nullableText,
   total_amount_due: numericLike,
   payment_confirmation_at: nullableText,
+  /**
+   * When payment was confirmed received. Optional so a payload from a database
+   * that predates migration 0015 still parses.
+   */
+  payment_received_at: nullableText,
   invoice_items: z
     .array(
       z.object({
@@ -228,6 +233,8 @@ export interface TrackedShipment {
   paymentWalletAddress: string | null;
   /** When the recipient reported sending payment, if they have. A claim, not a receipt. */
   paymentConfirmationAt: string | null;
+  /** When payment was confirmed received. The fact behind the receipt. */
+  paymentReceivedAt: string | null;
   createdAt: string;
   updatedAt: string;
   events: TrackedEvent[];
@@ -438,6 +445,7 @@ export function toTrackedShipment(payload: TrackShipmentPayload): TrackedShipmen
     paymentMethod: parsePaymentMethod(payload.payment_method),
     paymentWalletAddress: payload.payment_wallet_address,
     paymentConfirmationAt: payload.payment_confirmation_at,
+    paymentReceivedAt: payload.payment_received_at,
     createdAt: payload.created_at,
     updatedAt: payload.updated_at,
     events,

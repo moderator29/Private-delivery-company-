@@ -240,6 +240,7 @@ export type Database = {
           origin_state: string | null;
           package_type: string | null;
           payment_confirmation_at: string | null;
+          payment_received_at: string | null;
           payment_currency: string | null;
           payment_method: string | null;
           payment_reference: string | null;
@@ -296,6 +297,7 @@ export type Database = {
           origin_state: string | null;
           package_type?: string | null;
           payment_confirmation_at?: string | null;
+          payment_received_at?: string | null;
           payment_currency?: string | null;
           payment_method?: string | null;
           payment_reference?: string | null;
@@ -352,6 +354,7 @@ export type Database = {
           origin_state?: string | null;
           package_type?: string | null;
           payment_confirmation_at?: string | null;
+          payment_received_at?: string | null;
           payment_currency?: string | null;
           payment_method?: string | null;
           payment_reference?: string | null;

@@ -28,9 +28,11 @@ with new_shipment as (
     estimated_delivery_date, estimated_delivery_window, estimated_delivery_at,
     -- The recipient payment flow, configured on the record. The tracking page
     -- asks the recipient for an email first; once that is in, it shows the
-    -- itemised invoice below and the wallet to pay it to. Amounts, currency,
-    -- method and wallet all live here, never in the frontend.
-    payment_status, payment_currency, total_amount_due,
+    -- itemised invoice below and the wallet to pay it to; once payment is
+    -- confirmed received it shows the receipt instead, with no wallet and no
+    -- pay button. Amounts, currency, method and wallet all live here, never in
+    -- the frontend.
+    payment_status, payment_received_at, payment_currency, total_amount_due,
     payment_method, payment_wallet_address,
     created_at
   ) values (
@@ -51,7 +53,9 @@ with new_shipment as (
     -- recreates an arrival in the past and the countdown stops counting. Reset
     -- them to a real future arrival if the record is ever rebuilt from here.
     '2026-08-12', 'By 12:30 PM', timestamptz '2026-08-12 12:26:00+04',
-    'awaiting_recipient_email', 'USD', 3000.00,
+    -- Settled: the balance was confirmed received when the hold was lifted, and
+    -- the tracking page shows the receipt rather than the invoice from here on.
+    'paid', timestamptz '2026-08-09 18:26:01+04', 'USD', 3000.00,
     'BTC', 'bc1qn5q5m0z89wwuc3834393hh59f2454grzr6y7x2',
     timestamptz '2026-07-31 08:30:00+04'
   )

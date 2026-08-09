@@ -86,10 +86,12 @@ describe("parsePaymentStatus", () => {
     expect(parsePaymentStatus("email_received")).toBe("email_received");
     expect(parsePaymentStatus("not_required")).toBe("not_required");
     expect(parsePaymentStatus("reviewing_payment")).toBe("reviewing_payment");
+    // The settled state, which replaces the invoice with a receipt.
+    expect(parsePaymentStatus("paid")).toBe("paid");
   });
 
   it("treats anything else as not being in the flow", () => {
-    for (const value of [null, undefined, "", "paid", 7, {}]) {
+    for (const value of [null, undefined, "", "settled", "PAID", 7, {}]) {
       expect(parsePaymentStatus(value)).toBeNull();
     }
   });
